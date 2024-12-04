@@ -50,7 +50,7 @@ app.post('/send-custom-email', async (req, res) => {
     tokens[token] = { email, expires: Date.now() + 3600 * 1000 };
 
     // Construct the activation link
-    const activationLink = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/pages/verify?token=${token}`;
+    const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
 
     // Send the custom email
     await sendVerificationEmail(email, activationLink);
@@ -143,23 +143,23 @@ async function authenticateCustomer(email) {
     .accessToken;
 }
 app.get('/verify', (req, res) => {
-    const token = req.query.token;
-    const tokenData = tokens[token];
+      const token = req.query.token;
+      const tokenData = tokens[token];
     
-    if (!tokenData || tokenData.expires < Date.now()) {
-        return res.status(400).send('Invalid or expired token.');
-        }
+      if (!tokenData || tokenData.expires < Date.now()) {
+        return res.status(400).send('Invalid or expired token.');
+      }
     
-    const email = tokenData.email;
+      const email = tokenData.email;
     
-    // Remove the token after use to prevent reuse
-    delete tokens[token];
+      // Remove the token after use to prevent reuse
+      delete tokens[token];
     
-    // Optionally, create a session or set a cookie
-    res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
+      // Optionally, create a session or set a cookie
+      res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     
-    // Redirect to a confirmation page or send a success message
-    res.redirect('/pages/verified');
+      // Redirect to a confirmation page or send a success message
+      res.send('Your account has been verified. You can now log in.');
     });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

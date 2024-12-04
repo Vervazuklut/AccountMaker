@@ -42,7 +42,7 @@ app.post('/send-custom-email', async (req, res) => {
   tokens[token] = { email, expires: Date.now() + 3600 * 1000 };
 
   // Construct the activation link
-  const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify`;
+  const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
 
   // Send the custom email
   try {
@@ -132,6 +132,24 @@ async function authenticateCustomer(email) {
   return resultToken.data.customerAccessTokenCreate.customerAccessToken
     .accessToken;
 }
-
+app.get('/verify', (req, res) => {
+    const token = req.query.token;
+    const tokenData = tokens[token];
+    
+    if (!tokenData || tokenData.expires < Date.now()) {
+        return res.status(400).send('Invalid or expired token.');
+        }
+    
+    const email = tokenData.email;
+    
+    // Remove the token after use to prevent reuse
+    delete tokens[token];
+    
+    // Optionally, create a session or set a cookie
+    res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
+    
+    // Redirect to a confirmation page or send a success message
+    res.redirect('/verified');
+    });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

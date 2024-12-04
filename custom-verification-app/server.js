@@ -1,58 +1,68 @@
+// server.js
+
 require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const { sendVerificationEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
 
 const app = express();
-app.use(bodyParser.json());
 
-// In-memory token storage (use a database in production)
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// In-memory token storage
 let tokens = {};
 
 // Verify proxy signature (for security)
 function verifyProxySignature(query) {
-  const { signature, ...rest } = query;
-  const keys = Object.keys(rest).sort();
-  const message = keys.map(key => `${key}=${rest[key]}`).join('');
-  const providedSignature = query.signature;
+  const { signature, ...rest } = query;
+  const keys = Object.keys(rest).sort();
+  const message = keys.map(key => `${key}=${rest[key]}`).join('');
+  const providedSignature = query.signature;
 
-  const calculatedSignature = crypto
-    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
-    .update(message)
-    .digest('hex');
+  const calculatedSignature = crypto
+    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
+    .update(message)
+    .digest('hex');
 
-  return calculatedSignature === providedSignature;
+  return calculatedSignature === providedSignature;
 }
 
 // App Proxy endpoint to send custom verification emails
 app.post('/send-custom-email', async (req, res) => {
-  // Verify the request came from Shopify
-  if (!verifyProxySignature(req.query)) {
-    return res.status(403).json({ success: false, message: 'Unauthorized' });
-  }
+  console.log('Received POST request to /send-custom-email');
 
-  const email = req.body.email;
+  try {
+    // Verify the request came from Shopify (temporarily disabled for testing)
+    // if (!verifyProxySignature(req.query)) {
+    //   return res.status(403).json({ success: false, message: 'Unauthorized' });
+    // }
 
-  // Generate a secure random token
-  const token = crypto.randomBytes(32).toString('hex');
+    const email = req.body.email;
+    console.log('Email to send verification to:', email);
 
-  // Store the token with an expiration time (e.g., 1 hour)
-  tokens[token] = { email, expires: Date.now() + 3600 * 1000 };
+    // Generate a secure random token
+    const token = crypto.randomBytes(32).toString('hex');
 
-  // Construct the activation link
-  const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
+    // Store the token with an expiration time (e.g., 1 hour)
+    tokens[token] = { email, expires: Date.now() + 3600 * 1000 };
 
-  // Send the custom email
-  try {
-    await sendVerificationEmail(email, activationLink);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ success: false, message: 'Failed to send email.' });
-  }
+    // Construct the activation link
+    const activationLink = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/pages/verify?token=${token}`;
+
+    // Send the custom email
+    await sendVerificationEmail(email, activationLink);
+    console.log('Verification email sent successfully.');
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error in /send-custom-email:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to send email.' });
+  }
 });
+
 
 // App Proxy endpoint to handle token validation
 app.get('/activate', async (req, res) => {

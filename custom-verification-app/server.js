@@ -42,7 +42,7 @@ app.post('/send-custom-email', async (req, res) => {
   tokens[token] = { email, expires: Date.now() + 3600 * 1000 };
 
   // Construct the activation link
-  const activationLink = `https://${req.headers.host}/apps/AccountCreator/activate?token=${token}`;
+  const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify`;
 
   // Send the custom email
   try {

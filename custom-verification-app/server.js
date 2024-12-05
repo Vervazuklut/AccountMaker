@@ -149,15 +149,17 @@ app.get('/verify', (req, res) => {
     const email = tokenData.email;
     delete tokens[token];
     //set a cookie
+    console.log(email);
     res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     res.send("your email has been verified.")
     });
-    app.post('/get-stats', async (req, res) => {
+app.post('/get-stats', async (req, res) => {
       try {
       let rawData = await fsPromise.readFile('users.json', 'utf8');
       let jsonData = JSON.parse(rawData);
       let users = jsonData.users;
       const email = req.body.cookie;
+      console.log(email);
       const user = users.find(user => user.Email === email);
       
       if (!user) {
@@ -171,7 +173,7 @@ app.get('/verify', (req, res) => {
       console.error('Error in /get-stats:', error.message);
       res.status(500).send('Server error.');
       }
-      });
+});
 app.post('/register-user', async (req, res) => {
   const release = await mutex.acquire();
   try {

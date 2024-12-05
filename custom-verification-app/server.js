@@ -152,20 +152,26 @@ app.get('/verify', (req, res) => {
     res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     res.send("your email has been verified.")
     });
-app.post('/get-stats',(req, res) => {
-  let users = JSON.parse(rawData);
-  let EmailIndex = -1;
-  const email = req.body.cookie;
-  users.forEach(user => {
-    if (email == user.email){
-      EmailIndex = user.stats.NumberId;
-    }
-  })
-  if (EmailIndex == -1){
-    return res.status(400).send('Invalid Email.');
-  }
-  res.json(users[EmailIndex]);
-});
+    app.post('/get-stats', async (req, res) => {
+      try {
+      let rawData = await fsPromise.readFile('users.json', 'utf8');
+      let jsonData = JSON.parse(rawData);
+      let users = jsonData.users;
+      const email = req.body.cookie;
+      const user = users.find(user => user.Email === email);
+      
+      if (!user) {
+      return res.status(400).send('Invalid Email.');
+      }
+      
+      // Send the user data as JSON
+      res.json(user);
+      
+      } catch (error) {
+      console.error('Error in /get-stats:', error.message);
+      res.status(500).send('Server error.');
+      }
+      });
 app.post('/register-user', async (req, res) => {
   const release = await mutex.acquire();
   try {

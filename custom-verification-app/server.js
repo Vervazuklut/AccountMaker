@@ -202,7 +202,7 @@ app.post('/register-user', async (req, res) => {
 
     // Write the updated data back to users.json
     await fsPromise.writeFile('users.json', JSON.stringify(jsonData, null, 2));
-
+    console.log(jsonData);
     res.status(200).json({ success: true, message: 'User added successfully.' });
 
   } catch (error) {

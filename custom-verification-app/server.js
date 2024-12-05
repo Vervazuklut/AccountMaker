@@ -54,7 +54,7 @@ app.post('/send-custom-email', async (req, res) => {
     const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
 
     await sendVerificationEmail(email, activationLink);
-    console.log('Verification email sent successfully.');
+    //console.log('Verification email sent successfully.');
 
     res.json({ success: true });
   } catch (error) {
@@ -152,7 +152,7 @@ app.get('/verify', (req, res) => {
     res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     res.send("your email has been verified.")
     });
-app.get('/get-stats',(req, res) => {
+app.post('/get-stats',(req, res) => {
   let users = JSON.parse(rawData);
   let EmailIndex = -1;
   const email = req.body.cookie;

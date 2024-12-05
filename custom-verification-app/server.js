@@ -5,72 +5,64 @@ const express = require('express');
 const crypto = require('crypto');
 const { sendVerificationEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
-
+const fs = require('fs');
+const { json } = require('body-parser');
+let rawData = fs.readFileSync('users.json');
 const app = express();
-
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
-      res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://meet.google.com; worker-src 'self' https://meet.google.com; object-src 'none';"
-      );
-      next();
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://meet.google.com; worker-src 'self' https://meet.google.com; object-src 'none';"
+      );
+      next();
     });
-// In-memory token storage
 let tokens = {};
-
 // Verify proxy signature (for security)
 function verifyProxySignature(query) {
-  const { signature, ...rest } = query;
-  const keys = Object.keys(rest).sort();
-  const message = keys.map(key => `${key}=${rest[key]}`).join('');
-  const providedSignature = query.signature;
+  const { signature, ...rest } = query;
+  const keys = Object.keys(rest).sort();
+  const message = keys.map(key => `${key}=${rest[key]}`).join('');
+  const providedSignature = query.signature;
 
-  const calculatedSignature = crypto
-    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
-    .update(message)
-    .digest('hex');
+  const calculatedSignature = crypto
+    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
+    .update(message)
+    .digest('hex');
 
-  return calculatedSignature === providedSignature;
+  return calculatedSignature === providedSignature;
 }
 
-// App Proxy endpoint to send custom verification emails
+
 app.post('/send-custom-email', async (req, res) => {
-  console.log('Received POST request to /send-custom-email');
 
-  try {
-    // Verify the request came from Shopify (temporarily disabled for testing)
-    // if (!verifyProxySignature(req.query)) {
-    //   return res.status(403).json({ success: false, message: 'Unauthorized' });
-    // }
+  try {
+    // Verify the request came from Shopify
+    if (!verifyProxySignature(req.query)) {
+        return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    const email = req.body.email;
+    const token = crypto.randomBytes(32).toString('hex');
 
-    const email = req.body.email;
-    console.log('Email to send verification to:', email);
+    tokens[token] = { email, expires: Date.now() + 5 * 60 * 1000 };
 
-    // Generate a secure random token
-    const token = crypto.randomBytes(32).toString('hex');
 
-    // Store the token with an expiration time (e.g., 1 hour)
-    tokens[token] = { email, expires: Date.now() + 5 * 60 * 1000 };
+    const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
 
-    // Construct the activation link
-    const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
+    await sendVerificationEmail(email, activationLink);
+    console.log('Verification email sent successfully.');
 
-    // Send the custom email
-    await sendVerificationEmail(email, activationLink);
-    console.log('Verification email sent successfully.');
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error in /send-custom-email:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to send email.' });
-  }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error in /send-custom-email:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to send email.' });
+  }
 });
 
 
 // App Proxy endpoint to handle token validation
+/*
 app.get('/activate', async (req, res) => {
   const token = req.query.token;
   const tokenData = tokens[token];
@@ -85,11 +77,7 @@ app.get('/activate', async (req, res) => {
   delete tokens[token];
 
   try {
-    // Authenticate the customer to get the access token
     const customerAccessToken = await authenticateCustomer(email);
-
-    // Here you can choose to set a cookie or redirect the user
-    // For simplicity, we'll display a confirmation message
     res.send('Your account has been verified. You can now log in.');
   } catch (error) {
     console.error('Error activating account:', error);
@@ -118,9 +106,6 @@ async function authenticateCustomer(email) {
     }
   `;
 
-  // Since the customer's password is unknown, you may need to prompt them to reset it
-  // For this example, we'll assume the account is already activated
-
   const variablesToken = {
     input: {
       email: email,
@@ -148,24 +133,66 @@ async function authenticateCustomer(email) {
   return resultToken.data.customerAccessTokenCreate.customerAccessToken
     .accessToken;
 }
+
+*/
+
 app.get('/verify', (req, res) => {
-      const token = req.query.token;
-      const tokenData = tokens[token];
+    const token = req.query.token;
+    const tokenData = tokens[token];
     
-      if (!tokenData || tokenData.expires < Date.now()) {
-        return res.status(400).send('Invalid or expired token.');
-      }
-    
-      const email = tokenData.email;
-    
-      // Remove the token after use to prevent reuse
-      delete tokens[token];
-    
-      // Optionally, create a session or set a cookie
-      res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
-    
-      // Redirect to a confirmation page or send a success message
+    if (!tokenData || tokenData.expires < Date.now()) {
+      return res.status(400).send('Invalid or expired token.');
+    }
+    const email = tokenData.email;
+    delete tokens[token];
+    //set a cookie
+    res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     res.send("your email has been verified.")
     });
+app.get('/get-stats',(req, res) => {
+  let users = JSON.parse(rawData);
+  let EmailIndex = -1;
+  const email = req.body.cookie;
+  users.forEach(user => {
+    if (email == user.email){
+      EmailIndex = user.stats.NumberId;
+    }
+  })
+  if (EmailIndex == -1){
+    return res.status(400).send('Invalid Email.');
+  }
+  res.json(users[EmailIndex]);
+});
+app.post('/register-user', async (req, res) => {
+
+  try {
+    if (!verifyProxySignature(req.query)) {
+       return res.status(403).json({ success: false, message: 'Unauthorized' });
+      }
+      const email = req.body.email;
+      let jsonData = JSON.parse(rawData);
+      let users = jsonData.users;
+      let existingUser = users.find(user => user.email === email);
+      if (existingUser) {
+        return res.status(400).json({ success: false, message: 'Email already exists.' });
+      }
+      let Data = {
+          "Email": email,
+          "stats": {
+            "NumberID": users.length - 1,
+            "name": email.split("@")[0],
+            "download_credits": 50,
+            "Money":0
+          }
+      }
+      users.push(Data);
+      await fs.writeFile('users.json', JSON.stringify(jsonData, null, 2));
+      res.status(200).json({ success: true, message: 'User added successfully.' });
+
+  } catch (error) {
+    console.error('Error in /register-user:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to send email.' });
+  }
+  });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

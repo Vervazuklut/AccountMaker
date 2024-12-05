@@ -84,7 +84,7 @@ async function createOrFindCustomerAccount(email) {
   const adminAccessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
 
   // Check if customer already exists
-  const customerSearchResponse = await fetch(`https://${shopDomain}/admin/api/2023-07/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+  const customerSearchResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
     method: 'GET',
     headers: {
       'X-Shopify-Access-Token': adminAccessToken,
@@ -99,7 +99,7 @@ async function createOrFindCustomerAccount(email) {
     return customerSearchResult.customers[0];
   } else {
     // Create a new customer account
-    const response = await fetch(`https://${shopDomain}/admin/api/2023-07/customers.json`, {
+    const response = await fetch(`https://${shopDomain}/admin/api/2024-10/customers.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': adminAccessToken,
@@ -125,7 +125,7 @@ async function sendAccountActivationEmail(email) {
   const adminAccessToken = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
 
   // Fetch the customer ID by email
-  const customerSearchResponse = await fetch(`https://${shopDomain}/admin/api/2023-07/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+  const customerSearchResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
     method: 'GET',
     headers: {
       'X-Shopify-Access-Token': adminAccessToken,
@@ -142,7 +142,7 @@ async function sendAccountActivationEmail(email) {
   const customerId = customerSearchResult.customers[0].id;
 
   // Send account activation email via Shopify
-  const sendInviteResponse = await fetch(`https://${shopDomain}/admin/api/2023-07/customers/${customerId}/send_invite.json`, {
+  const sendInviteResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/${customerId}/send_invite.json`, {
     method: 'POST',
     headers: {
       'X-Shopify-Access-Token': adminAccessToken,

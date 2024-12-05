@@ -20,10 +20,11 @@ async function sendVerificationEmail(to, activationLink) {
           </tr>
           <tr>
             <td style="padding:20px;">
-              <p>Thank you for signing up. Please copy this link and paste it in a new tab to verify your account and start enjoying our assets.</p>
+              <p>Thank you for signing up. Please copy this link (since the button may not work as google marks messages from new companies as spams), unreport this account as spam and paste it in a new tab/click the button to verify your email and start enjoying our assets.</p>
               <p style="text-align:center;">
                 <h2>${activationLink}</h2>
                 <h3>This link will be valid for only 5 minutes.</h3>
+                <a href="${activationLink}" style="display:inline-block;padding:15px 25px;margin:10px 0;background-color:#28a745;color:#fff;text-decoration:none;border-radius:5px;font-size:16px;">Verify Email</a>
               </p>
               <p>If you did not sign up for this account, please ignore this email.</p>
               <p style="margin-top:40px;">Best regards,<br/>The Digital Assets Team</p>

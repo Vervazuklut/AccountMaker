@@ -181,7 +181,7 @@ app.post('/register-user', async (req, res) => {
     let users = jsonData.users;
 
     // Check if the email already exists
-    let existingUser = users.find(user => user.email === email);
+    let existingUser = users.find(user => user.users.email === email);
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already exists.' });
     }

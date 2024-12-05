@@ -8,6 +8,9 @@ const { Shopify } = require('@shopify/shopify-api');
 const fs = require('fs');
 const { json } = require('body-parser');
 let rawData = fs.readFileSync('users.json');
+const fs = require('fs').promises;
+const { Mutex } = require('async-mutex');
+const mutex = new Mutex();
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -164,35 +167,50 @@ app.get('/get-stats',(req, res) => {
   res.json(users[EmailIndex]);
 });
 app.post('/register-user', async (req, res) => {
-
+  const release = await mutex.acquire();
   try {
     if (!verifyProxySignature(req.query)) {
-       return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const email = req.body.email;
+
+    // Read the existing users.json file
+    let rawData = await fs.readFile('users.json', 'utf-8');
+    let jsonData = JSON.parse(rawData);
+    let users = jsonData.users;
+
+    // Check if the email already exists
+    let existingUser = users.find(user => user.Email === email);
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already exists.' });
+    }
+
+    // Create new user data
+    let Data = {
+      "Email": email,
+      "stats": {
+        "NumberID": users.length + 1, // Adjusted for uniqueness
+        "name": email.split("@")[0],
+        "download_credits": 50,
+        "Money": 0
       }
-      const email = req.body.email;
-      let jsonData = JSON.parse(rawData);
-      let users = jsonData.users;
-      let existingUser = users.find(user => user.email === email);
-      if (existingUser) {
-        return res.status(400).json({ success: false, message: 'Email already exists.' });
-      }
-      let Data = {
-          "Email": email,
-          "stats": {
-            "NumberID": users.length - 1,
-            "name": email.split("@")[0],
-            "download_credits": 50,
-            "Money":0
-          }
-      }
-      users.push(Data);
-      await fs.writeFile('users.json', JSON.stringify(jsonData, null, 2));
-      res.status(200).json({ success: true, message: 'User added successfully.' });
+    }
+
+    // Add the new user to the users array
+    users.push(Data);
+
+    // Write the updated data back to users.json
+    await fs.writeFile('users.json', JSON.stringify(jsonData, null, 2));
+
+    res.status(200).json({ success: true, message: 'User added successfully.' });
 
   } catch (error) {
     console.error('Error in /register-user:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to send email.' });
+    res.status(500).json({ success: false, message: 'Server error.' });
+  } finally {
+      release(); // Release the mutex
   }
-  });
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

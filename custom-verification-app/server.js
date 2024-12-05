@@ -8,7 +8,7 @@ const { Shopify } = require('@shopify/shopify-api');
 const fs = require('fs');
 const { json } = require('body-parser');
 let rawData = fs.readFileSync('users.json');
-const fs = require('fs').promises;
+const fsPromise = require('fs').promises;
 const { Mutex } = require('async-mutex');
 const mutex = new Mutex();
 const app = express();
@@ -176,12 +176,12 @@ app.post('/register-user', async (req, res) => {
     const email = req.body.email;
 
     // Read the existing users.json file
-    let rawData = await fs.readFile('users.json', 'utf-8');
+    let rawData = await fsPromise.readFile('users.json', 'utf-8');
     let jsonData = JSON.parse(rawData);
     let users = jsonData.users;
 
     // Check if the email already exists
-    let existingUser = users.find(user => user.Email === email);
+    let existingUser = users.find(user => user.email === email);
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already exists.' });
     }
@@ -201,7 +201,7 @@ app.post('/register-user', async (req, res) => {
     users.push(Data);
 
     // Write the updated data back to users.json
-    await fs.writeFile('users.json', JSON.stringify(jsonData, null, 2));
+    await fsPromise.writeFile('users.json', JSON.stringify(jsonData, null, 2));
 
     res.status(200).json({ success: true, message: 'User added successfully.' });
 

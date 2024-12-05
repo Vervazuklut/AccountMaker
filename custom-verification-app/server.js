@@ -165,7 +165,7 @@ app.get('/verify', (req, res) => {
       res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     
       // Redirect to a confirmation page or send a success message
-      res.send('Your email has been verified.');
+    res.send("your email has been verified.")
     });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

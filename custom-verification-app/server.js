@@ -188,47 +188,61 @@ app.post('/register-user', async (req, res) => {
 });
 app.post('/SpendCredits', async (req, res) => {
   try {
-    if (!verifyProxySignature(req.query)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-
-    const authHeader = req.headers.authorization;
-    console.log('Authorization Header:', authHeader);
-
-    if (!authHeader) {
-      return res.status(401).send('No authorization token provided.');
-    }
-
-    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
-
-    // Verify the token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const email = decoded.email;
-    const getParams = {
-      TableName: 'Account',
-      Key: { 'users': email }
-    };
-    const result = await dynamoDb.send(new GetCommand(getParams));
-    if (result.Download_Credits - 1 < 0){
-      res.status(500).json({ success: false, message: 'Not enough credits!' });
-      return;
-    }
-    const command = new UpdateCommand({
-      getParams,
-      UpdateExpression: "set Download_Credits = :amount",
-      ExpressionAttributeValues: {
-        ":amount": result.Download_Credits - 1,
-      },
-      ReturnValues: "ALL_NEW",
-    });  
-    const dynamoDBClient = await docClient.send(command);
-    console.log(dynamoDBClient); // debugging
-    return res.status(200).json({success: true, message: "Credit Spent!"});
-  } catch (error) {
-    console.error('Error in /SpendCredits:', error.message);
-    res.status(500).json({ success: false, message: 'Server error.' });
+  if (!verifyProxySignature(req.query)) {
+  return res.status(403).json({ success: false, message: 'Unauthorized' });
   }
-});
+  
+  const authHeader = req.headers.authorization;
+  console.log('Authorization Header:', authHeader);
+  
+  if (!authHeader) {
+  return res.status(401).send('No authorization token provided.');
+  }
+  const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+  const decoded = jwt.verify(token, JWT_SECRET);
+  const email = decoded.email;
+  const getParams = {
+  TableName: 'Account',
+  Key: { 'users': email }
+  };
+  const result = await docClient.send(new GetCommand(getParams));
+  
+  if (!result.Item) {
+  res.status(404).json({ success: false, message: 'User not found' });
+  return;
+  }
+  
+  const currentCredits = result.Item.Download_Credits;
+  
+  if (currentCredits - 1 < 0) {
+  res.status(400).json({ success: false, message: 'Not enough credits!' });
+  return;
+  }
+  
+  const command = new UpdateCommand({
+  ...getParams,
+  UpdateExpression: "set Download_Credits = :amount",
+  ExpressionAttributeValues: {
+  ":amount": currentCredits - 1,
+  },
+  ReturnValues: "ALL_NEW",
+  });
+  
+  const updateResult = await docClient.send(command);
+  
+  if (!updateResult.Attributes) {
+  res.status(500).json({ success: false, message: 'Failed to update credits.' });
+  return;
+  }
+  
+  console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
+  
+  return res.status(200).json({ success: true, message: "Credit Spent!", updatedCredits: updateResult.Attributes.Download_Credits });
+  } catch (error) {
+  console.error('Error in /SpendCredits:', error.message);
+  res.status(500).json({ success: false, message: 'Server error.' });
+  }
+  });
 app.post('/SpendMoney', async (req, res) => { // REMB: req needs body.cost.
   try {
     if (!verifyProxySignature(req.query)) {

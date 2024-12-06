@@ -88,7 +88,7 @@ app.get('/verify', (req, res) => {
   const tokenData = tokens[token];
 
   if (!tokenData || tokenData.expires < Date.now()) {
-    return res.status(400).send({message: 'Invalid or expired token.'});
+    return res.status(400).send('Invalid or expired token.');
   }
   const email = tokenData.email;
   delete tokens[token];
@@ -96,7 +96,7 @@ app.get('/verify', (req, res) => {
   // Generate JWT token
   const jwtToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
 
-  res.json({ message: 'Your email has been verified.'});
+  res.json({ message: 'Your email has been verified.', token: jwtToken });
 });
 
 app.post('/get-stats', async (req, res) => {

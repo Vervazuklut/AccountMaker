@@ -12,8 +12,8 @@ const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
 // Import AWS SDK v3 modules
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBClient } = require('./node_modules/@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient } = require('./node_modules/@aws-sdk/lib-dynamodb');
 
 app.use(helmet());
 app.use(cookieParser());

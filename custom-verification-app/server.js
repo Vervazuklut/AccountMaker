@@ -96,7 +96,7 @@ app.get('/verify', (req, res) => {
   // Generate JWT token
   const jwtToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
 
-  res.json({ message: 'Your email has been verified.', token: jwtToken });
+  res.json({ message: 'Your email has been verified.'});
 });
 
 app.post('/get-stats', async (req, res) => {

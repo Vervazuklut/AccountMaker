@@ -13,7 +13,7 @@ const cors = require('cors');
 
 // Import AWS SDK v3 modules
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -101,6 +101,11 @@ app.get('/verify', (req, res) => {
 
 app.post('/get-stats', async (req, res) => {
   try {
+    if (!verifyProxySignature(req.query)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+
     const authHeader = req.headers.authorization;
     console.log('Authorization Header:', authHeader);
 
@@ -161,7 +166,7 @@ app.post('/register-user', async (req, res) => {
     const newUser = {
       'users': email,
       'Name': email.split('@')[0],
-      'Download Credits': 50,
+      'Download_Credits': 50,
       'Money': 0,
       'UserID': userID
     };
@@ -181,6 +186,91 @@ app.post('/register-user', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
+app.post('/SpendCredits', async (req, res) => {
+  try {
+    if (!verifyProxySignature(req.query)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
 
+    const authHeader = req.headers.authorization;
+    console.log('Authorization Header:', authHeader);
+
+    if (!authHeader) {
+      return res.status(401).send('No authorization token provided.');
+    }
+
+    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const email = decoded.email;
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
+    const result = await dynamoDb.send(new GetCommand(getParams));
+    if (result.Download_Credits - 1 < 0){
+      res.status(500).json({ success: false, message: 'Not enough credits!' });
+      return;
+    }
+    const command = new UpdateCommand({
+      getParams,
+      UpdateExpression: "set Download_Credits = :amount",
+      ExpressionAttributeValues: {
+        ":amount": result.Download_Credits - 1,
+      },
+      ReturnValues: "ALL_NEW",
+    });  
+    const dynamoDBClient = await docClient.send(command);
+    console.log(dynamoDBClient); // debugging
+    return res.status(200).json({success: true, message: "Credit Spent!"});
+  } catch (error) {
+    console.error('Error in /SpendCredits:', error.message);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+app.post('/SpendMoney', async (req, res) => { // REMB: req needs body.cost.
+  try {
+    if (!verifyProxySignature(req.query)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const authHeader = req.headers.authorization;
+    console.log('Authorization Header:', authHeader);
+
+    if (!authHeader) {
+      return res.status(401).send('No authorization token provided.');
+    }
+
+    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const email = decoded.email;
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
+    const result = await dynamoDb.send(new GetCommand(getParams));
+    if (result.Download_Credits - req.body.cost < 0){
+      res.status(500).json({ success: false, message: 'Not enough money!' });
+      return;
+    }
+    const command = new UpdateCommand({
+      getParams,
+      UpdateExpression: "set Download_Credits = :amount",
+      ExpressionAttributeValues: {
+        ":amount": result.Download_Credits - req.body.cost,
+      },
+      ReturnValues: "ALL_NEW",
+    });  
+    const dynamoDBClient = await docClient.send(command);
+    console.log(dynamoDBClient); // debugging
+    return res.status(200).json({success: true, message: `$${req.body.cost} Spent!`});
+  } catch (error) {
+    console.error('Error in /SpendCredits:', error.message);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

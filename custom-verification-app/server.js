@@ -7,6 +7,8 @@ const { sendVerificationEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
 const { json } = require('body-parser');
 const app = express();
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
@@ -160,7 +162,7 @@ app.get('/verify', (req, res) => {
 
 app.post('/get-stats', async (req, res) => {
   try {
-    const email = req.body.cookie; 
+    const email = req.cookies.verifiedUserEmail; 
     console.log(email);
 
     const getParams = {

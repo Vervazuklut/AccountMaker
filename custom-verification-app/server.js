@@ -21,7 +21,12 @@ app.use((req, res, next) => {
 let tokens = {};
 const AWS = require('aws-sdk');
 const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
 
+app.use(cors({
+  origin: 'https://gh5rsb-rj.myshopify.com',
+  credentials: true,
+}));
 // Configure AWS SDK
 AWS.config.update({ region: process.env.AWS_REGION }); 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
@@ -153,7 +158,7 @@ app.get('/verify', (req, res) => {
     delete tokens[token];
     //set a cookie
     console.log(email);
-    res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
+    res.cookie('verifiedUserEmail', email, { httpOnly: true, sameSite: 'Lax' });
     res.send("your email has been verified.")
     });
 
@@ -162,8 +167,12 @@ app.get('/verify', (req, res) => {
 
 app.post('/get-stats', async (req, res) => {
   try {
-    const email = req.cookies.verifiedUserEmail; 
-    console.log(email);
+    const email = req.cookies.verifiedUserEmail;
+    console.log('Email from cookie:', email);
+
+    if (!email) {
+      return res.status(400).send('User not authenticated.');
+    }
 
     const getParams = {
       TableName: 'Account',

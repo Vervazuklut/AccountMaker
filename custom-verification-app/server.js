@@ -243,47 +243,80 @@ app.post('/SpendCredits', async (req, res) => {
   res.status(500).json({ success: false, message: 'Server error.' });
   }
   });
-app.post('/SpendMoney', async (req, res) => { // REMB: req needs body.cost.
+app.post('/ChangeMoney', async (req, res) => {
   try {
-    if (!verifyProxySignature(req.query)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-
-    const authHeader = req.headers.authorization;
-    console.log('Authorization Header:', authHeader);
-
-    if (!authHeader) {
-      return res.status(401).send('No authorization token provided.');
-    }
-
-    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
-
-    // Verify the token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const email = decoded.email;
-    const getParams = {
-      TableName: 'Account',
-      Key: { 'users': email }
-    };
-    const result = await dynamoDb.send(new GetCommand(getParams));
-    if (result.Download_Credits - req.body.cost < 0){
-      res.status(500).json({ success: false, message: 'Not enough money!' });
-      return;
-    }
-    const command = new UpdateCommand({
-      getParams,
-      UpdateExpression: "set Download_Credits = :amount",
-      ExpressionAttributeValues: {
-        ":amount": result.Download_Credits - req.body.cost,
-      },
-      ReturnValues: "ALL_NEW",
-    });  
-    const dynamoDBClient = await dynamoDb.send(command);
-    console.log(dynamoDBClient); // debugging
-    return res.status(200).json({success: true, message: `$${req.body.cost} Spent!`});
+  if (!verifyProxySignature(req.query)) {
+  return res.status(403).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  const authHeader = req.headers.authorization;
+  console.log('Authorization Header:', authHeader);
+  
+  if (!authHeader) {
+  return res.status(401).send('No authorization token provided.');
+  }
+  const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+  const decoded = jwt.verify(token, JWT_SECRET);
+  const email = decoded.email;
+  const getParams = {
+  TableName: 'Account',
+  Key: { 'users': email }
+  };
+  const result = await dynamoDb.send(new GetCommand(getParams));
+  
+  if (!result.Item) {
+  res.status(404).json({ success: false, message: 'User not found' });
+  return;
+  }
+  
+  const currentCredits = result.Item.Money;
+  
+  if (currentCredits - 1 < 0) {
+  res.status(400).json({ success: false, message: 'Not enough money!' });
+  return;
+  }
+  
+  const command = new UpdateCommand({
+  ...getParams,
+  UpdateExpression: "set Money = :amount",
+  ExpressionAttributeValues: {
+  ":amount": currentCredits - req.body.cost,
+  },
+  ReturnValues: "ALL_NEW",
+  });
+  
+  const updateResult = await dynamoDb.send(command);
+  
+  if (!updateResult.Attributes) {
+  res.status(500).json({ success: false, message: 'Failed to update money.' });
+  return;
+  }
+  
+  console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
+  
+  return res.status(200).json({ success: true, message: "Money Spent!", updatedCredits: updateResult.Attributes.Download_Credits });
   } catch (error) {
-    console.error('Error in /SpendCredits:', error.message);
-    res.status(500).json({ success: false, message: 'Server error.' });
+  console.error('Error in /SpendCredits:', error.message);
+  res.status(500).json({ success: false, message: 'Server error.' });
+  }
+  });
+  function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
+  const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
+  return generatedHmac === hmacHeader;
+    }
+app.post('/webhooks/order_paid', async (req, res) => { 
+  try {
+  const hmac = req.headers['x-shopify-hmac-sha256'];
+  const body = await getRawBody(req);
+  const verified = verifyWebhookHMAC(body, hmac, SHOPIFY_API_SECRET);
+
+  if (!verified) {
+    return res.status(401).send('Webhook verification failed');
+  }
+  const order = JSON.parse(body.toString());
+  } catch(error) {
+    console.error('Error processing webhook: ', error);
+    res.status(500).send('Error');
   }
 });
 const PORT = process.env.PORT || 3000;

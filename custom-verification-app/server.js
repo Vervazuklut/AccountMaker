@@ -158,7 +158,7 @@ app.get('/verify', (req, res) => {
     delete tokens[token];
     //set a cookie
     console.log(email);
-    res.cookie('verifiedUserEmail', email, { sameSite: 'None' });
+    res.cookie('verifiedUserEmail', email, { secure: true, httpOnly: false,sameSite: 'None' });
     res.send("your email has been verified.")
     });
 

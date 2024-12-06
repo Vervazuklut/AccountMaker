@@ -205,7 +205,7 @@ app.post('/SpendCredits', async (req, res) => {
   TableName: 'Account',
   Key: { 'users': email }
   };
-  const result = await docClient.send(new GetCommand(getParams));
+  const result = await dynamoDb.send(new GetCommand(getParams));
   
   if (!result.Item) {
   res.status(404).json({ success: false, message: 'User not found' });
@@ -228,7 +228,7 @@ app.post('/SpendCredits', async (req, res) => {
   ReturnValues: "ALL_NEW",
   });
   
-  const updateResult = await docClient.send(command);
+  const updateResult = await dynamoDb.send(command);
   
   if (!updateResult.Attributes) {
   res.status(500).json({ success: false, message: 'Failed to update credits.' });
@@ -278,7 +278,7 @@ app.post('/SpendMoney', async (req, res) => { // REMB: req needs body.cost.
       },
       ReturnValues: "ALL_NEW",
     });  
-    const dynamoDBClient = await docClient.send(command);
+    const dynamoDBClient = await dynamoDb.send(command);
     console.log(dynamoDBClient); // debugging
     return res.status(200).json({success: true, message: `$${req.body.cost} Spent!`});
   } catch (error) {

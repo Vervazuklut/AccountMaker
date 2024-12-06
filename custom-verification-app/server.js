@@ -11,11 +11,9 @@ const helmet = require('helmet');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
-
-const AWS = require('@aws-sdk/client-dynamodb');
-const { DynamoDBClient } = AWS;
-const DynamoDBDoc = require('@aws-sdk/lib-dynamodb');
-const { DynamoDBDocumentClient } = DynamoDBDoc;
+// Import AWS SDK v3 modules
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -122,8 +120,8 @@ app.post('/get-stats', async (req, res) => {
       Key: { 'users': email }
     };
 
-    // AWS SDK v3 method call (returns a Promise directly)
-    const result = await dynamoDb.GetItem(getParams);
+    // Use send method with GetCommand
+    const result = await dynamoDb.send(new GetCommand(getParams));
 
     if (!result.Item) {
       return res.status(400).send('Invalid Email.');
@@ -149,8 +147,8 @@ app.post('/register-user', async (req, res) => {
       Key: { 'users': email }
     };
 
-    // AWS SDK v3 method call
-    const result = await dynamoDb.GetItem(getParams);
+    // Use send method with GetCommand
+    const result = await dynamoDb.send(new GetCommand(getParams));
 
     if (result.Item) {
       return res.status(400).json({ success: false, message: 'Email already exists.' });
@@ -173,8 +171,8 @@ app.post('/register-user', async (req, res) => {
       Item: newUser
     };
 
-    // Put the new user into DynamoDB
-    await dynamoDb.put(putParams);
+    // Use send method with PutCommand
+    await dynamoDb.send(new PutCommand(putParams));
 
     res.status(200).json({ success: true, message: 'User added successfully.' });
 
@@ -186,78 +184,3 @@ app.post('/register-user', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
-
-// App Proxy endpoint to handle token validation
-/*
-app.get('/activate', async (req, res) => {
-  const token = req.query.token;
-  const tokenData = tokens[token];
-
-  if (!tokenData || tokenData.expires < Date.now()) {
-    return res.status(400).send('Invalid or expired token.');
-  }
-
-  const email = tokenData.email;
-
-  // Remove the token after use
-  delete tokens[token];
-
-  try {
-    const customerAccessToken = await authenticateCustomer(email);
-    res.send('Your account has been verified. You can now log in.');
-  } catch (error) {
-    console.error('Error activating account:', error);
-    res.status(500).send('An error occurred while activating your account.');
-  }
-});
-
-// Helper function to authenticate the customer
-async function authenticateCustomer(email) {
-  const storefrontAccessToken = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
-  const shop = process.env.SHOPIFY_SHOP_DOMAIN;
-
-  const queryToken = `
-    mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
-      customerAccessTokenCreate(input: $input) {
-        customerAccessToken {
-          accessToken
-          expiresAt
-        }
-        customerUserErrors {
-          code
-          field
-          message
-        }
-      }
-    }
-  `;
-
-  const variablesToken = {
-    input: {
-      email: email,
-      password: 'dummy-password',
-    },
-  };
-
-  const responseToken = await fetch(`https://${shop}/api/2024-10/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': storefrontAccessToken,
-    },
-    body: JSON.stringify({ query: queryToken, variables: variablesToken }),
-  });
-
-  const resultToken = await responseToken.json();
-
-  if (resultToken.data.customerAccessTokenCreate.customerUserErrors.length > 0) {
-    const errorMessage =
-      resultToken.data.customerAccessTokenCreate.customerUserErrors[0].message;
-    throw new Error(errorMessage);
-  }
-
-  return resultToken.data.customerAccessTokenCreate.customerAccessToken
-    .accessToken;
-}
-
-*/

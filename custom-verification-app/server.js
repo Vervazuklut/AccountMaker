@@ -24,7 +24,7 @@ const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
 app.use(cors({
-  origin: 'https://gh5rsb-rj.myshopify.com',
+  origin: 'https://gh5rsb-rj.myshopify.com/pages/verify',
   credentials: true,
 }));
 // Configure AWS SDK

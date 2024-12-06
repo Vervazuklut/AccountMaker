@@ -1,20 +1,30 @@
-// server.js
-
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
 const { sendVerificationEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
-const { json } = require('body-parser');
 const app = express();
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;
 const helmet = require('helmet');
+const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
+
+// Import AWS SDK v3 modules
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
+
 app.use(helmet());
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(cors({
+  origin: 'https://gh5rsb-rj.myshopify.com/pages/verify',
+  credentials: true,
+}));
+
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
@@ -22,26 +32,21 @@ app.use((req, res, next) => {
   );
   next();
 });
-let tokens = {};
-const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
-const cors = require('cors');
 
-app.use(cors({
-  origin: 'https://gh5rsb-rj.myshopify.com/pages/verify',
-  credentials: true,
-}));
 app.use((req, res, next) => {
   res.setHeader(
-  'Content-Security-Policy',
-  "default-src 'self'; script-src 'self'; object-src 'none';"
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self'; object-src 'none';"
   );
   next();
-  });
-// Configure AWS SDK
-AWS.config.update({ region: process.env.AWS_REGION }); 
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
-// Verify proxy signature (for security)
+});
+
+let tokens = {};
+
+// Initialize AWS SDK v3 clients
+const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+const dynamoDb = DynamoDBDocumentClient.from(dynamoDBClient);
+
 function verifyProxySignature(query) {
   const { signature, ...rest } = query;
   const keys = Object.keys(rest).sort();
@@ -56,24 +61,20 @@ function verifyProxySignature(query) {
   return calculatedSignature === providedSignature;
 }
 
-
 app.post('/send-custom-email', async (req, res) => {
-
   try {
     // Verify the request came from Shopify
     if (!verifyProxySignature(req.query)) {
-        return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     const email = req.body.email;
     const token = crypto.randomBytes(32).toString('hex');
 
     tokens[token] = { email, expires: Date.now() + 5 * 60 * 1000 };
 
-
     const activationLink = `https://gh5rsb-rj.myshopify.com/pages/verify?token=${token}`;
 
     await sendVerificationEmail(email, activationLink);
-    //console.log('Verification email sent successfully.');
 
     res.json({ success: true });
   } catch (error) {
@@ -82,6 +83,107 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
+app.get('/verify', (req, res) => {
+  const token = req.query.token;
+  const tokenData = tokens[token];
+
+  if (!tokenData || tokenData.expires < Date.now()) {
+    return res.status(400).send('Invalid or expired token.');
+  }
+  const email = tokenData.email;
+  delete tokens[token];
+
+  // Generate JWT token
+  const jwtToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
+
+  res.json({ message: 'Your email has been verified.', token: jwtToken });
+});
+
+app.post('/get-stats', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    console.log('Authorization Header:', authHeader);
+
+    if (!authHeader) {
+      return res.status(401).send('No authorization token provided.');
+    }
+
+    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const email = decoded.email;
+    console.log('Email from token:', email);
+
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
+
+    // AWS SDK v3 method call (returns a Promise directly)
+    const result = await dynamoDb.get(getParams);
+
+    if (!result.Item) {
+      return res.status(400).send('Invalid Email.');
+    }
+
+    res.json(result.Item);
+
+  } catch (error) {
+    console.error('Error in /get-stats:', error.message);
+    res.status(401).send('Invalid or expired token.');
+  }
+});
+
+app.post('/register-user', async (req, res) => {
+  try {
+    if (!verifyProxySignature(req.query)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const email = req.body.email;
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
+
+    // AWS SDK v3 method call
+    const result = await dynamoDb.get(getParams);
+
+    if (result.Item) {
+      return res.status(400).json({ success: false, message: 'Email already exists.' });
+    }
+
+    // Generate a unique UserID
+    const userID = uuidv4();
+
+    // Create new user data
+    const newUser = {
+      'users': email,
+      'Name': email.split('@')[0],
+      'Download Credits': 50,
+      'Money': 0,
+      'UserID': userID
+    };
+
+    const putParams = {
+      TableName: 'Account',
+      Item: newUser
+    };
+
+    // Put the new user into DynamoDB
+    await dynamoDb.put(putParams);
+
+    res.status(200).json({ success: true, message: 'User added successfully.' });
+
+  } catch (error) {
+    console.error('Error in /register-user:', error.message);
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
 
 // App Proxy endpoint to handle token validation
 /*
@@ -157,107 +259,3 @@ async function authenticateCustomer(email) {
 }
 
 */
-
-app.get('/verify', (req, res) => {
-    const token = req.query.token;
-    const tokenData = tokens[token];
-  
-    if (!tokenData || tokenData.expires < Date.now()) {
-      return res.status(400).send('Invalid or expired token.');
-    }
-    const email = tokenData.email;
-    delete tokens[token];
-  
-    // Generate JWT token
-    const jwtToken = jwt.sign({ email }, JWT_SECRET, { expiresIn: '1h' });
-  
-    res.json({ message: 'Your email has been verified.', token: jwtToken });
-  });
-
-// AWS SDK and UUID
-
-
-app.post('/get-stats', async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      console.log('Authorization Header:', authHeader);
-  
-      if (!authHeader) {
-        return res.status(401).send('No authorization token provided.');
-      }
-  
-      const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
-  
-      // Verify the token
-      const decoded = jwt.verify(token, JWT_SECRET);
-      const email = decoded.email;
-      console.log('Email from token:', email);
-  
-      const getParams = {
-        TableName: 'Account',
-        Key: { 'users': email }
-      };
-  
-      const result = await dynamoDb.get(getParams).promise();
-  
-      if (!result.Item) {
-        return res.status(400).send('Invalid Email.');
-      }
-  
-      res.json(result.Item);
-  
-    } catch (error) {
-      console.error('Error in /get-stats:', error.message);
-      res.status(401).send('Invalid or expired token.');
-    }
-  });
-
-app.post('/register-user', async (req, res) => {
-  try {
-    if (!verifyProxySignature(req.query)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-
-    const email = req.body.email;
-    const getParams = {
-      TableName: 'Account',
-      Key: { 'users': email }
-    };
-
-    const result = await dynamoDb.get(getParams).promise();
-
-    if (result.Item) {
-      return res.status(400).json({ success: false, message: 'Email already exists.' });
-    }
-
-    // Generate a unique UserID
-    const userID = uuidv4();
-
-    // Create new user data
-    const newUser = {
-      'users': email,
-      'Name': email.split('@')[0],
-      'Download Credits': 50,
-      'Money': 0,
-      'UserID': userID
-    };
-
-    const putParams = {
-      TableName: 'Account', 
-      Item: newUser
-    };
-
-    // Put the new user into DynamoDB
-    await dynamoDb.put(putParams).promise();
-
-    res.status(200).json({ success: true, message: 'User added successfully.' });
-
-  } catch (error) {
-    console.error('Error in /register-user:', error.message);
-    res.status(500).json({ success: false, message: 'Server error.' });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
-

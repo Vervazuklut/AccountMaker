@@ -150,7 +150,7 @@ app.post('/register-user', async (req, res) => {
     };
 
     // AWS SDK v3 method call
-    const result = await dynamoDb.get(getParams);
+    const result = await dynamoDb.GetItem(getParams);
 
     if (result.Item) {
       return res.status(400).json({ success: false, message: 'Email already exists.' });

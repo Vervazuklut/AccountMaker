@@ -11,9 +11,11 @@ const helmet = require('helmet');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 
-// Import AWS SDK v3 modules
-const { DynamoDBClient } = require('@aws-sdk/lib-dynamodb');
-const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
+
+const AWS = require('@aws-sdk/client-dynamodb');
+const { DynamoDBClient } = AWS;
+const DynamoDBDoc = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient } = DynamoDBDoc;
 
 app.use(helmet());
 app.use(cookieParser());

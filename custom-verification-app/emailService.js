@@ -26,7 +26,7 @@ async function sendVerificationEmail(to, activationLink) {
                 <h3>This link will be valid for only 5 minutes.</h3>
                 <a href="${activationLink}" style="display:inline-block;padding:15px 25px;margin:10px 0;background-color:#28a745;color:#fff;text-decoration:none;border-radius:5px;font-size:16px;">Verify Email</a>
               </p>
-              <p>If you did not sign up for this account, please ignore this email.</p>
+              <p>If you did not verify, please ignore this email.</p>
               <p style="margin-top:40px;">Best regards,<br/>The Digital Assets Team</p>
             </td>
           </tr>

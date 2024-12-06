@@ -5,23 +5,24 @@ const express = require('express');
 const crypto = require('crypto');
 const { sendVerificationEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
-const fs = require('fs');
 const { json } = require('body-parser');
-let rawData = fs.readFileSync('users.json');
-const fsPromise = require('fs').promises;
-const { Mutex } = require('async-mutex');
-const mutex = new Mutex();
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
-      res.setHeader(
-        'Content-Security-Policy',
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://meet.google.com; worker-src 'self' https://meet.google.com; object-src 'none';"
-      );
-      next();
-    });
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://meet.google.com; worker-src 'self' https://meet.google.com; object-src 'none';"
+  );
+  next();
+});
 let tokens = {};
+const AWS = require('aws-sdk');
+const { v4: uuidv4 } = require('uuid');
+
+// Configure AWS SDK
+AWS.config.update({ region: process.env.AWS_REGION }); 
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
 // Verify proxy signature (for security)
 function verifyProxySignature(query) {
   const { signature, ...rest } = query;
@@ -153,72 +154,80 @@ app.get('/verify', (req, res) => {
     res.cookie('verifiedUserEmail', email, { httpOnly: true, secure: true });
     res.send("your email has been verified.")
     });
+
+// AWS SDK and UUID
+
+
 app.post('/get-stats', async (req, res) => {
-      try {
-      let rawData = await fsPromise.readFile('users.json', 'utf8');
-      let jsonData = JSON.parse(rawData);
-      let users = jsonData.users;
-      const email = req.body.cookie;
-      console.log(email);
-      const user = users.find(user => user.Email === email);
-      
-      if (!user) {
+  try {
+    const email = req.body.cookie; 
+    console.log(email);
+
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
+
+    const result = await dynamoDb.get(getParams).promise();
+
+    if (!result.Item) {
       return res.status(400).send('Invalid Email.');
-      }
-      
-      // Send the user data as JSON
-      res.json(user);
-      
-      } catch (error) {
-      console.error('Error in /get-stats:', error.message);
-      res.status(500).send('Server error.');
-      }
+    }
+
+    res.json(result.Item);
+
+  } catch (error) {
+    console.error('Error in /get-stats:', error.message);
+    res.status(500).send('Server error.');
+  }
 });
+
 app.post('/register-user', async (req, res) => {
-  const release = await mutex.acquire();
   try {
     if (!verifyProxySignature(req.query)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
     const email = req.body.email;
+    const getParams = {
+      TableName: 'Account',
+      Key: { 'users': email }
+    };
 
-    // Read the existing users.json file
-    let rawData = await fsPromise.readFile('users.json', 'utf-8');
-    let jsonData = JSON.parse(rawData);
-    let users = jsonData.users;
+    const result = await dynamoDb.get(getParams).promise();
 
-    // Check if the email already exists
-    let existingUser = users.find(user => user.email === email);
-    if (existingUser) {
+    if (result.Item) {
       return res.status(400).json({ success: false, message: 'Email already exists.' });
     }
 
+    // Generate a unique UserID
+    const userID = uuidv4();
+
     // Create new user data
-    let Data = {
-      "Email": email,
-      "stats": {
-        "NumberID": users.length + 1, // Adjusted for uniqueness
-        "name": email.split("@")[0],
-        "download_credits": 50,
-        "Money": 0
-      }
-    }
+    const newUser = {
+      'users': email,
+      'Name': email.split('@')[0],
+      'Download Credits': 50,
+      'Money': 0,
+      'UserID': userID
+    };
 
-    // Add the new user to the users array
-    users.push(Data);
+    const putParams = {
+      TableName: 'Account', 
+      Item: newUser
+    };
 
-    // Write the updated data back to users.json
-    await fsPromise.writeFile('users.json', JSON.stringify(jsonData, null, 2));
-    console.log(jsonData);
+    // Put the new user into DynamoDB
+    await dynamoDb.put(putParams).promise();
+
     res.status(200).json({ success: true, message: 'User added successfully.' });
 
   } catch (error) {
     console.error('Error in /register-user:', error.message);
     res.status(500).json({ success: false, message: 'Server error.' });
-  } finally {
-      release(); // Release the mutex
   }
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
+

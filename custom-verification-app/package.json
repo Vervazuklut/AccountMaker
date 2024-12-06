@@ -14,8 +14,10 @@
     "@sendgrid/mail": "^8.1.4",
     "@shopify/shopify-api": "^11.6.0",
     "async-mutex": "^0.5.0",
+    "aws-sdk": "^2.1692.0",
     "body-parser": "^1.20.3",
     "dotenv": "^16.4.7",
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "uuid": "^11.0.3"
   }
 }

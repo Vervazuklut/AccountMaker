@@ -123,7 +123,7 @@ app.post('/get-stats', async (req, res) => {
     };
 
     // AWS SDK v3 method call (returns a Promise directly)
-    const result = await dynamoDb.get(getParams);
+    const result = await dynamoDb.GetItem(getParams);
 
     if (!result.Item) {
       return res.status(400).send('Invalid Email.');

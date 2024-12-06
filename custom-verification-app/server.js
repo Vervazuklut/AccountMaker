@@ -88,7 +88,7 @@ app.get('/verify', (req, res) => {
   const tokenData = tokens[token];
 
   if (!tokenData || tokenData.expires < Date.now()) {
-    return res.status(400).send('Invalid or expired token.');
+    return res.status(400).send({message: 'Invalid or expired token.'});
   }
   const email = tokenData.email;
   delete tokens[token];

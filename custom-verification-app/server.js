@@ -10,21 +10,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const helmet = require('helmet');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
-function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
-  const generatedHash = crypto
-    .createHmac('sha256', secret)
-    .update(rawBody)
-    .digest('base64');
-
-  const hashBuffer = Buffer.from(generatedHash, 'utf8');
-  const hmacBuffer = Buffer.from(hmacHeader, 'utf8');
-
-  if (hashBuffer.length !== hmacBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(hashBuffer, hmacBuffer);
-}
 // Import AWS SDK v3 modules
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
@@ -313,10 +298,25 @@ app.post('/ChangeMoney', async (req, res) => {
   res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
-/*
 function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   return generatedHmac === hmacHeader;
+}
+/*
+function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
+  const generatedHash = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('base64');
+
+  const hashBuffer = Buffer.from(generatedHash, 'utf8');
+  const hmacBuffer = Buffer.from(hmacHeader, 'utf8');
+
+  if (hashBuffer.length !== hmacBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(hashBuffer, hmacBuffer);
 }
 */
 app.post('/webhooks/order_paid', async (req, res) => { 

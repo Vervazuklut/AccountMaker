@@ -320,37 +320,26 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
 }
 app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), async (req, res) => { 
   try {
-    // Extract HMAC header and raw body
     const hmac = req.headers['x-shopify-hmac-sha256'];
-    const rawBody = req.body; // Raw body as Buffer
-
-    // Verify webhook authenticity
+    const rawBody = req.body;
     const verified = verifyWebhookHMAC(rawBody, hmac, SHOPIFY_API_SECRET);
-
     if (!verified) {
       return res.status(401).send('Webhook verification failed');
     }
-
-    // Parse the order data
     const order = JSON.parse(rawBody.toString('utf8'));
-
-    // Get the amount to add
     const MoneyAdded = parseFloat(order.total_price);
-
-    // Get customer email from order data
     const email = order.customer && order.customer.email;
 
     if (!email) {
       return res.status(400).send('Customer email not found in order data');
     }
-
-    // Update user's money in DynamoDB
+    if (title === "Money Top Up"){
     const updateCommand = new UpdateCommand({
       TableName: 'Account',
       Key: { 'users': email },
       UpdateExpression: "ADD Money :amount",
       ExpressionAttributeValues: {
-        ":amount": MoneyAdded,
+        ":amount": MoneyAdded+10,
       },
       ReturnValues: "ALL_NEW",
     });
@@ -362,8 +351,7 @@ app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), asyn
     }
     
     console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
-
-    // Respond to Shopify to acknowledge receipt
+    }
     res.status(200).send('Webhook processed successfully');
 
   } catch(error) {

@@ -35,7 +35,7 @@ app.use((req, res, next) => {
 app.use(express.json({
   verify: function (req, res, buf, encoding) {
     if (req.url.startsWith('/webhooks/')) {
-      req.rawBody = buf.toString(encoding || 'utf8');
+      req.rawBody = buf;
     }
   }
 }));
@@ -323,7 +323,12 @@ app.post('/webhooks/order_paid', async (req, res) => {
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     const rawBody = req.rawBody;
-    console.log(rawBody);
+
+    if (!rawBody) {
+      console.error('rawBody is undefined');
+      return res.status(400).send('Invalid request');
+    }
+
     // Verify the HMAC using the raw request body
     const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
 
@@ -332,9 +337,9 @@ app.post('/webhooks/order_paid', async (req, res) => {
       return res.status(401).send('Webhook verification failed');
     }
 
-    // Use the parsed body
     const order = req.body;
 
+    // Process the order
     const MoneyAdded = parseFloat(order.total_price);
     const email = order.customer && order.customer.email;
 
@@ -342,8 +347,7 @@ app.post('/webhooks/order_paid', async (req, res) => {
       return res.status(400).send('Customer email not found in order data');
     }
 
-    // Check if the order includes "MoneyTopUp" product
-    const lineItems = order.line_items;
+    const lineItems = order.line_items || [];
     let hasMoneyTopUp = false;
 
     for (const item of lineItems) {
@@ -359,18 +363,18 @@ app.post('/webhooks/order_paid', async (req, res) => {
         Key: { 'users': email },
         UpdateExpression: "ADD Money :amount",
         ExpressionAttributeValues: {
-          ":amount": MoneyAdded + 10, // Adjust according to your logic
+          ":amount": MoneyAdded + 10,
         },
         ReturnValues: "ALL_NEW",
       });
-
+      
       const updateResult = await dynamoDb.send(updateCommand);
 
       if (!updateResult.Attributes) {
         console.error('Failed to update money for user:', email);
         return res.status(500).json({ success: false, message: 'Failed to update money.' });
       }
-
+      
       console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
     }
 

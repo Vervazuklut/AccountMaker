@@ -323,7 +323,7 @@ app.post('/webhooks/order_paid', async (req, res) => {
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     const rawBody = req.rawBody;
-
+    console.log(rawBody);
     if (!rawBody) {
       console.error('rawBody is undefined');
       return res.status(400).send('Invalid request');

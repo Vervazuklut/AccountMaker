@@ -324,11 +324,13 @@ app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), asyn
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     const rawBody = req.body;
+    /*
     console.log(rawBody);
     const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
     if (!verified) {
       return res.status(401).send('Webhook verification failed');
     }
+      */
     const order = JSON.parse(rawBody.toString('utf8'));
     const MoneyAdded = parseFloat(order.total_price);
     const email = order.customer && order.customer.email;

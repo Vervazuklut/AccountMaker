@@ -10,7 +10,21 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const helmet = require('helmet');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
+function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
+  const generatedHash = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('base64');
 
+  const hashBuffer = Buffer.from(generatedHash, 'utf8');
+  const hmacBuffer = Buffer.from(hmacHeader, 'utf8');
+
+  if (hashBuffer.length !== hmacBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(hashBuffer, hmacBuffer);
+}
 // Import AWS SDK v3 modules
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
@@ -299,24 +313,62 @@ app.post('/ChangeMoney', async (req, res) => {
   console.error('Error in /SpendCredits:', error.message);
   res.status(500).json({ success: false, message: 'Server error.' });
   }
-  });
-  function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
+});
+function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   return generatedHmac === hmacHeader;
-    }
-app.post('/webhooks/order_paid', async (req, res) => { 
+}
+app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), async (req, res) => { 
   try {
-  const hmac = req.headers['x-shopify-hmac-sha256'];
-  const body = await getRawBody(req);
-  const verified = verifyWebhookHMAC(body, hmac, SHOPIFY_API_SECRET);
+    // Extract HMAC header and raw body
+    const hmac = req.headers['x-shopify-hmac-sha256'];
+    const rawBody = req.body; // Raw body as Buffer
 
-  if (!verified) {
-    return res.status(401).send('Webhook verification failed');
-  }
-  const order = JSON.parse(body.toString());
+    // Verify webhook authenticity
+    const verified = verifyWebhookHMAC(rawBody, hmac, SHOPIFY_API_SECRET);
+
+    if (!verified) {
+      return res.status(401).send('Webhook verification failed');
+    }
+
+    // Parse the order data
+    const order = JSON.parse(rawBody.toString('utf8'));
+
+    // Get the amount to add
+    const MoneyAdded = parseFloat(order.total_price);
+
+    // Get customer email from order data
+    const email = order.customer && order.customer.email;
+
+    if (!email) {
+      return res.status(400).send('Customer email not found in order data');
+    }
+
+    // Update user's money in DynamoDB
+    const updateCommand = new UpdateCommand({
+      TableName: 'Account',
+      Key: { 'users': email },
+      UpdateExpression: "ADD Money :amount",
+      ExpressionAttributeValues: {
+        ":amount": MoneyAdded,
+      },
+      ReturnValues: "ALL_NEW",
+    });
+    
+    const updateResult = await dynamoDb.send(updateCommand);
+
+    if (!updateResult.Attributes) {
+      return res.status(500).json({ success: false, message: 'Failed to update money.' });
+    }
+    
+    console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
+
+    // Respond to Shopify to acknowledge receipt
+    res.status(200).send('Webhook processed successfully');
+
   } catch(error) {
-    console.error('Error processing webhook: ', error);
-    res.status(500).send('Error');
+    console.error('Error processing webhook:', error);
+    res.status(500).send('Error processing webhook');
   }
 });
 const PORT = process.env.PORT || 3000;

@@ -333,7 +333,7 @@ app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), asyn
     if (!email) {
       return res.status(400).send('Customer email not found in order data');
     }
-    if (title === "Money Top Up"){
+    if (title === "MoneyTopUp"){
     const updateCommand = new UpdateCommand({
       TableName: 'Account',
       Key: { 'users': email },

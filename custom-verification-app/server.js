@@ -285,7 +285,7 @@ app.post('/ChangeMoney', async (req, res) => {
   
   const currentCredits = result.Item.Money;
   
-  if (currentCredits - 1 < 0) {
+  if (currentCredits - req.body.cost < 0) {
   res.status(400).json({ success: false, message: 'Not enough money!' });
   return;
   }

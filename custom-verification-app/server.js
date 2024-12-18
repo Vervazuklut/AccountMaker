@@ -298,11 +298,12 @@ app.post('/ChangeMoney', async (req, res) => {
   res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
+/*
 function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   return generatedHmac === hmacHeader;
 }
-/*
+*/
 function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHash = crypto
     .createHmac('sha256', secret)
@@ -318,12 +319,11 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
 
   return crypto.timingSafeEqual(hashBuffer, hmacBuffer);
 }
-*/
 app.post('/webhooks/order_paid', async (req, res) => { 
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     const rawBody = req.rawBody;
-
+    console.log(rawBody);
     // Verify the HMAC using the raw request body
     const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
 

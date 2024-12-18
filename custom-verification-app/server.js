@@ -47,14 +47,13 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; object-src 'none';"
-  );
-  next();
-});
-
+app.use(express.json({
+  verify: function (req, res, buf, encoding) {
+    if (req.url.startsWith('/webhooks/')) {
+      req.rawBody = buf.toString(encoding || 'utf8');
+    }
+  }
+}));
 let tokens = {};
 
 // Initialize AWS SDK v3 clients
@@ -320,48 +319,68 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   return generatedHmac === hmacHeader;
 }
 */
-app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), async (req, res) => { 
+app.post('/webhooks/order_paid', async (req, res) => { 
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
-    const rawBody = req.body;
-    /*
-    console.log(rawBody);
+    const rawBody = req.rawBody;
+
+    // Verify the HMAC using the raw request body
     const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
+
     if (!verified) {
+      console.error('Webhook verification failed');
       return res.status(401).send('Webhook verification failed');
     }
-      */
-    const order = JSON.parse(rawBody);
+
+    // Use the parsed body
+    const order = req.body;
+
     const MoneyAdded = parseFloat(order.total_price);
     const email = order.customer && order.customer.email;
 
     if (!email) {
       return res.status(400).send('Customer email not found in order data');
     }
-    if (title === "MoneyTopUp"){
-    const updateCommand = new UpdateCommand({
-      TableName: 'Account',
-      Key: { 'users': email },
-      UpdateExpression: "ADD Money :amount",
-      ExpressionAttributeValues: {
-        ":amount": MoneyAdded+10,
-      },
-      ReturnValues: "ALL_NEW",
-    });
-    
-    const updateResult = await dynamoDb.send(updateCommand);
 
-    if (!updateResult.Attributes) {
-      return res.status(500).json({ success: false, message: 'Failed to update money.' });
+    // Check if the order includes "MoneyTopUp" product
+    const lineItems = order.line_items;
+    let hasMoneyTopUp = false;
+
+    for (const item of lineItems) {
+      if (item.title === "MoneyTopUp") {
+        hasMoneyTopUp = true;
+        break;
+      }
     }
-    
-    console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
+
+    if (hasMoneyTopUp) {
+      const updateCommand = new UpdateCommand({
+        TableName: 'Account',
+        Key: { 'users': email },
+        UpdateExpression: "ADD Money :amount",
+        ExpressionAttributeValues: {
+          ":amount": MoneyAdded + 10, // Adjust according to your logic
+        },
+        ReturnValues: "ALL_NEW",
+      });
+
+      const updateResult = await dynamoDb.send(updateCommand);
+
+      if (!updateResult.Attributes) {
+        console.error('Failed to update money for user:', email);
+        return res.status(500).json({ success: false, message: 'Failed to update money.' });
+      }
+
+      console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
     }
+
     res.status(200).send('Webhook processed successfully');
 
   } catch(error) {
     console.error('Error processing webhook:', error);
-    res.status(500).send('Error processing webhook');
+    if (!res.headersSent) {
+      res.status(500).send('Error processing webhook');
+    }
   }
 });
 const PORT = process.env.PORT || 3000;

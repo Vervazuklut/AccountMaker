@@ -331,7 +331,7 @@ app.post('/webhooks/order_paid', express.raw({ type: 'application/json' }), asyn
       return res.status(401).send('Webhook verification failed');
     }
       */
-    const order = JSON.parse(rawBody.toString('utf8'));
+    const order = JSON.parse(rawBody);
     const MoneyAdded = parseFloat(order.total_price);
     const email = order.customer && order.customer.email;
 

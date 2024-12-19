@@ -16,7 +16,7 @@ const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = requir
 
 app.use(helmet());
 app.use(cookieParser());
-app.use(express.json());
+//app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({

@@ -359,7 +359,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
     const updateCommand = new UpdateCommand({
       TableName: 'Account',
       Key: { users: email },
-      UpdateExpression: "ADD Money :amount, Download_Credits: :credits",
+      UpdateExpression: "ADD Money :amount, Download_Credits :credits",
       ExpressionAttributeValues: { ":amount": MoneyAdded + 2.25,
         ":credits": 50
        },

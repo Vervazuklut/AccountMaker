@@ -336,7 +336,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
     return res.status(401).send('Webhook verification failed');
   }
   */
- 
+
   const order = req.body;
   const MoneyAdded = parseFloat(order.total_price);
   const email = order.customer && order.customer.email;
@@ -359,8 +359,10 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
     const updateCommand = new UpdateCommand({
       TableName: 'Account',
       Key: { users: email },
-      UpdateExpression: "ADD Money :amount",
-      ExpressionAttributeValues: { ":amount": MoneyAdded + 10 },
+      UpdateExpression: "ADD Money :amount, Download_Credits: :credits",
+      ExpressionAttributeValues: { ":amount": MoneyAdded,
+        ":credits": 50
+       },
       ReturnValues: "ALL_NEW",
     });
   

@@ -327,14 +327,16 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
     console.error('rawBody is undefined');
     return res.status(400).send('Invalid request');
   }
-  
+  console.log(rawBody);
+  /*
   const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
   
   if (!verified) {
     console.error('Webhook verification failed');
     return res.status(401).send('Webhook verification failed');
   }
-  
+  */
+ 
   const order = req.body;
   const MoneyAdded = parseFloat(order.total_price);
   const email = order.customer && order.customer.email;

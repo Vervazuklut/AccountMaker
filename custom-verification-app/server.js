@@ -347,7 +347,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   
   const lineItems = order.line_items || [];
   let hasMoneyTopUp = false;
-  
+  console.log("Added money!");
   for (const item of lineItems) {
     if (item.title === "MoneyTopUp") {
       hasMoneyTopUp = true;

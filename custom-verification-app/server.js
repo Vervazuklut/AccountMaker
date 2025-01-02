@@ -56,7 +56,7 @@ function verifyProxySignature(query) {
 
   return calculatedSignature === providedSignature;
 }
-
+// email
 app.post('/send-custom-email', async (req, res) => {
   try {
     // Verify the request came from Shopify
@@ -79,6 +79,22 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
+app.post('/send-work-email', async (req, res) => {
+  try {
+    if (!verifyProxySignature(req.query)) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    const email = req.body.email;
+    const UserChoice = req.body.UserChoice;
+    const DownloadFile = req.body.downloadFile;
+    await sendAssetsEmail(email, UserChoice,DownloadFile);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error in /send-work-email:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to send email.' });
+  }
+});
+// all other functions
 app.get('/verify', (req, res) => {
   const token = req.query.token;
   const tokenData = tokens[token];

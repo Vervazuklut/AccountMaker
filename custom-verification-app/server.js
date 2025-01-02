@@ -87,6 +87,7 @@ app.post('/send-work-email', async (req, res) => {
     const email = req.body.email;
     const UserChoice = req.body.UserChoice;
     const DownloadFile = req.body.downloadFile;
+    console.log(email, UserChoice, DownloadFile);
     await sendAssetsEmail(email, UserChoice,DownloadFile);
     res.json({ success: true });
   } catch (error) {

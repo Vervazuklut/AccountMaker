@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
-const { sendVerificationEmail } = require('./emailService');
+const { sendVerificationEmail, sendAssetsEmail } = require('./emailService');
 const { Shopify } = require('@shopify/shopify-api');
 const app = express();
 const cookieParser = require('cookie-parser');

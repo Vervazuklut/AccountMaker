@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
 const { sendVerificationEmail } = require('./emailService');
 const { uploadFileToGoogleDrive } = require('./googleDriveService');
 const { Shopify } = require('@shopify/shopify-api');

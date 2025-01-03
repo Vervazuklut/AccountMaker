@@ -16,7 +16,6 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const path = require('path');
 const mime = require('mime-types');
-const { machine } = require('os');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -102,7 +101,7 @@ app.post('/upload-file', async (req, res) => {
     const FilePath = req.body.file;
     const originalName = "Test";
     const folderId = '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
-    const fileData = await uploadFileToDrive(FilePath, mine.lookup(FilePath), folderId);
+    const fileData = await uploadFileToDrive(FilePath, mime.lookup(FilePath), folderId);
     return res.json({
       success: true,
       fileId: fileData.fileId,

@@ -13,7 +13,6 @@ async function uploadFileToDrive(filePath, mimeType, folderId) {
   // Prepare file metadata
   const fileMetaData = {
     name: path.basename(filePath), 
-    // "parents" is how we specify the folder(s)
     parents: [folderId], 
   };
 
@@ -30,17 +29,6 @@ async function uploadFileToDrive(filePath, mimeType, folderId) {
   });
 
   const fileId = file.data.id;
-
-  // Optional: set permissions so anyone with the link can view
-  await driveService.permissions.create({
-    fileId,
-    requestBody: {
-      role: 'reader',
-      type: 'anyone',
-    },
-  });
-
-  // Get the final web links
   const updatedFile = await driveService.files.get({
     fileId,
     fields: 'webViewLink, webContentLink',

@@ -15,6 +15,8 @@ const { google } = require('googleapis');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const path = require('path');
+const mime = require('mime-types');
+const { machine } = require('os');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -98,12 +100,10 @@ app.post('/send-custom-email', async (req, res) => {
 
 app.post('/upload-file', async (req, res) => {
   try {
-    const localFilePath = req.file.path;
-    const mimeType = req.file.mimetype;
+    const FilePath = req.body.file;
     const originalName = req.file.originalname;
     const folderId = '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
-    const fileData = await uploadFileToDrive(localFilePath, mimeType, folderId);
-    fs.unlinkSync(localFilePath);
+    const fileData = await uploadFileToDrive(FilePath, mine.lookup(FilePath), folderId);
     return res.json({
       success: true,
       fileId: fileData.fileId,

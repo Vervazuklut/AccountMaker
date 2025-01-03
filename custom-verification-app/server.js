@@ -99,7 +99,7 @@ app.post('/send-custom-email', async (req, res) => {
 
 app.post('/upload-file', upload.single('file'), async (req, res) => {
   try {
-    console.log(req);
+    //console.log(req);
     const localFilePath = req.file.path;
     const mimeType = req.file.mimetype;
     const originalName = req.file.originalname;
@@ -179,7 +179,7 @@ app.post('/get-stats', async (req, res) => {
 
 
     const authHeader = req.headers.authorization;
-    console.log('Authorization Header:', authHeader);
+    //console.log('Authorization Header:', authHeader);
 
     if (!authHeader) {
       return res.status(401).send('No authorization token provided.');
@@ -190,7 +190,7 @@ app.post('/get-stats', async (req, res) => {
     // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
     const email = decoded.email;
-    console.log('Email from token:', email);
+    //console.log('Email from token:', email);
 
     const getParams = {
       TableName: 'Account',
@@ -265,7 +265,7 @@ app.post('/SpendCredits', async (req, res) => {
   }
   
   const authHeader = req.headers.authorization;
-  console.log('Authorization Header:', authHeader);
+  //console.log('Authorization Header:', authHeader);
   
   if (!authHeader) {
   return res.status(401).send('No authorization token provided.');
@@ -307,7 +307,7 @@ app.post('/SpendCredits', async (req, res) => {
   return;
   }
   
-  console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
+  //console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
   
   return res.status(200).json({ success: true, message: "Credit Spent!", updatedCredits: updateResult.Attributes.Download_Credits });
   } catch (error) {
@@ -322,7 +322,7 @@ app.post('/ChangeMoney', async (req, res) => {
   }
   
   const authHeader = req.headers.authorization;
-  console.log('Authorization Header:', authHeader);
+  //console.log('Authorization Header:', authHeader);
   
   if (!authHeader) {
   return res.status(401).send('No authorization token provided.');
@@ -364,7 +364,7 @@ app.post('/ChangeMoney', async (req, res) => {
   return;
   }
   
-  console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
+  //console.log('Updated Credits:', updateResult.Attributes.Download_Credits);
   
   return res.status(200).json({ success: true, message: "Money Spent!", updatedCredits: updateResult.Attributes.Download_Credits });
   } catch (error) {
@@ -403,7 +403,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
     console.error('rawBody is undefined');
     return res.status(400).send('Invalid request');
   }
-  console.log(rawBody);
+  //console.log(rawBody);
   /*
   const verified = verifyWebhookHMAC(rawBody, hmac, process.env.SHOPIFY_API_SECRET);
   
@@ -423,7 +423,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   
   const lineItems = order.line_items || [];
   let hasMoneyTopUp = false;
-  console.log("Added money!");
+  //console.log("Added money!");
   for (const item of lineItems) {
     if (item.title === "MoneyTopUp") {
       hasMoneyTopUp = true;
@@ -449,7 +449,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
       return res.status(500).json({ success: false, message: 'Failed to update money.' });
     }
   
-    console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
+    //console.log(`Updated Money for user ${email}:`, updateResult.Attributes.Money);
   }
   
   res.status(200).send('Webhook processed successfully');

@@ -167,30 +167,4 @@ function generateEmailHTML(ChoiceOfUser, downloadFile) {
   return emailHtml;
 }
 
-// 2. Main function to send the email
-async function sendAssetsEmail(to, ChoiceOfUser, downloadFile) {
-  // Generate the HTML content based on which option the user selected
-  const emailHTML = generateEmailHTML(ChoiceOfUser, downloadFile);
-
-  const msg = {
-    to,
-    from: 'digitalassetscorporationsllc@gmail.com', // Your verified sender
-    subject: `${ChoiceOfUser} - Digital Assets`,
-    html: emailHTML,
-    trackingSettings: {
-      clickTracking: {
-        enable: false,
-      },
-    },
-  };
-
-  try {
-    await sgMail.send(msg);
-    // console.log('Email sent successfully');
-  } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
-  }
-}
-
-module.exports = { sendVerificationEmail, sendAssetsEmail};
+module.exports = { sendVerificationEmail};

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
-const { sendVerificationEmail, sendAssetsEmail } = require('./emailService');
+const { sendVerificationEmail } = require('./emailService');
 const { uploadFileToDrive } = require('./googleDriveService');
 const { Shopify } = require('@shopify/shopify-api');
 const app = express();
@@ -15,8 +15,8 @@ const { google } = require('googleapis');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const path = require('path');
-const mime = require('mime-types');
-
+const { uploadFileToDrive } = require('./driveUpload');
+const upload = multer({ dest: 'uploads/' });
 app.use(helmet());
 app.use(cookieParser());
 //app.use(express.json());
@@ -96,12 +96,18 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
-app.post('/upload-file', async (req, res) => {
+app.post('/upload-file', upload.single('file'), async (req, res) => {
   try {
-    const FilePath = req.body.file;
-    const originalName = "Test";
-    const folderId = '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
-    const fileData = await uploadFileToDrive(FilePath, mime.lookup(FilePath), folderId);
+
+    const localFilePath = req.file.path;
+    const mimeType = req.file.mimetype;
+    const originalName = req.file.originalname;
+
+    const folderId =  '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
+    const fileData = await uploadFileToDrive(localFilePath, mimeType, folderId);
+
+    fs.unlinkSync(localFilePath);
+
     return res.json({
       success: true,
       fileId: fileData.fileId,

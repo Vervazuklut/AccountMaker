@@ -44,16 +44,13 @@ const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoDb = DynamoDBDocumentClient.from(dynamoDBClient);
 
 // Google Spreadsheets
-const GOOGLEAPIKEY = process.env.GOOGLE_API_KEY;
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+const KEYFILEPATH = process.env.GOOGLE_API_KEY_FILE;
 const SPREADSHEET_ID = '17JG6M4D-RUMLJqJHU2TxMp0uOUDpPLMEQhFa6amNTH4';
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 async function getSheetsInstance() {
   const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    },
-    scopes: SCOPES,
+    keyFile: KEYFILEPATH,    // your service account key file
+    scopes: SCOPES,          // read/write scope
   });
   const client = await auth.getClient();
   return google.sheets({ version: 'v4', auth: client });

@@ -49,7 +49,6 @@ const dynamoDb = DynamoDBDocumentClient.from(dynamoDBClient);
 
 // Google Spreadsheets
 const KEYFILEPATH = '/etc/secrets/GOOGLE_API_KEY_FILE';
-console.log(KEYFILEPATH);
 const SPREADSHEET_ID = '17JG6M4D-RUMLJqJHU2TxMp0uOUDpPLMEQhFa6amNTH4';
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 async function getSheetsInstance() {
@@ -101,7 +100,7 @@ app.post('/send-custom-email', async (req, res) => {
 app.post('/upload-file', async (req, res) => {
   try {
     const FilePath = req.body.file;
-    const originalName = req.file.originalname;
+    const originalName = "Test";
     const folderId = '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
     const fileData = await uploadFileToDrive(FilePath, mine.lookup(FilePath), folderId);
     return res.json({

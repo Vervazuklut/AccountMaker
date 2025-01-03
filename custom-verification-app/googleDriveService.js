@@ -41,4 +41,4 @@ async function uploadFileToGoogleDrive(filePath, mimeType, folderId) {
   };
 }
 
-module.exports = { uploadFileToDrive };
+module.exports = { uploadFileToGoogleDrive };

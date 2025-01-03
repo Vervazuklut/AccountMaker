@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const helmet = require('helmet');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
-// Import AWS SDK v3 modules
+const { google } = require('googleapis');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
@@ -42,6 +42,23 @@ let tokens = {};
 // Initialize AWS SDK v3 clients
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoDb = DynamoDBDocumentClient.from(dynamoDBClient);
+
+// Google Spreadsheets
+const GOOGLEAPIKEY = process.env.GOOGLE_API_KEY;
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+const SPREADSHEET_ID = '17JG6M4D-RUMLJqJHU2TxMp0uOUDpPLMEQhFa6amNTH4';
+async function getSheetsInstance() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    },
+    scopes: SCOPES,
+  });
+  const client = await auth.getClient();
+  return google.sheets({ version: 'v4', auth: client });
+}
+
 
 function verifyProxySignature(query) {
   const { signature, ...rest } = query;
@@ -79,20 +96,45 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
-app.post('/send-work-email', async (req, res) => {
+app.post('/send-spreadsheet', async (req, res) => {
   try {
-    if (!verifyProxySignature(req.query)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-    const email = req.body.email;
-    const UserChoice = req.body.UserChoice;
-    const DownloadFile = req.body.downloadFile;
-    console.log(email, UserChoice, DownloadFile);
-    await sendAssetsEmail(email, UserChoice,DownloadFile);
-    res.json({ success: true });
+   if (!verifyProxySignature(req.query)) {
+    return res.status(403).json({ success: false, message: 'Unauthorized' });
+  }
+  const timestamp = new Date().toISOString();
+
+  const email = req.body.email || 'N/A';
+  const userChoice = req.body.UserChoice;
+  const downloadFile = req.body.downloadFile || 'No file Selected';
+  const stage = 'N.A.';
+  const notes = '';
+
+  // Create the single row to append
+  const rowData = [
+    timestamp,
+    email,
+    userChoice,
+    downloadFile,
+    stage,
+    notes,
+  ];
+  const sheets = await getSheetsInstance();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: 'Sheet1!A:F',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: {
+      values: [rowData],
+    },
+  });
+  res.json({
+    success: true,
+    message: 'Row appended to Google Sheets successfully.',
+  });
   } catch (error) {
-    console.error('Error in /send-work-email:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to send email.' });
+    console.error('Error in /send-spreadsheet:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to send spreadsheet.' });
   }
 });
 // all other functions
@@ -400,6 +442,6 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   res.status(500).send('Error processing webhook');
   }
   }
-  });
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App listening on port ${PORT}`));

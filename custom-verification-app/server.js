@@ -13,6 +13,7 @@ const cors = require('cors');
 const { google } = require('googleapis');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const path = require('path');
 
 app.use(helmet());
 app.use(cookieParser());
@@ -45,6 +46,8 @@ const dynamoDb = DynamoDBDocumentClient.from(dynamoDBClient);
 
 // Google Spreadsheets
 const KEYFILEPATH = process.env.GOOGLE_API_KEY_FILE;
+console.log(KEYFILEPATH);
+console.log(path.join('/etc/secrets/',KEYFILEPATH))
 const SPREADSHEET_ID = '17JG6M4D-RUMLJqJHU2TxMp0uOUDpPLMEQhFa6amNTH4';
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 async function getSheetsInstance() {

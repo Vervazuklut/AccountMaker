@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
 const { sendVerificationEmail } = require('./emailService');
-const { uploadFileToDrive } = require('./googleDriveService');
+const { uploadFileToGoogleDrive } = require('./googleDriveService');
 const { Shopify } = require('@shopify/shopify-api');
 const app = express();
 const multer = require('multer');
@@ -16,7 +16,6 @@ const { google } = require('googleapis');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const path = require('path');
-const { uploadFileToDrive } = require('./driveUpload');
 const upload = multer({ dest: 'uploads/' });
 app.use(helmet());
 app.use(cookieParser());
@@ -105,7 +104,7 @@ app.post('/upload-file', upload.single('file'), async (req, res) => {
     const originalName = req.file.originalname;
 
     const folderId =  '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
-    const fileData = await uploadFileToDrive(localFilePath, mimeType, folderId);
+    const fileData = await uploadFileToGoogleDrive(localFilePath, mimeType, folderId);
 
     fs.unlinkSync(localFilePath);
 

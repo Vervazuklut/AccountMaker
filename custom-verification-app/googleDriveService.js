@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
 
-async function uploadFileToDrive(filePath, mimeType, folderId) {
+async function uploadFileToGoogleDrive(filePath, mimeType, folderId) {
   // Auth setup
   const auth = new google.auth.GoogleAuth({
     keyFile: '/etc/secrets/GOOGLE_API_KEY_FILE',

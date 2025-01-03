@@ -5,6 +5,7 @@ const { sendVerificationEmail } = require('./emailService');
 const { uploadFileToDrive } = require('./googleDriveService');
 const { Shopify } = require('@shopify/shopify-api');
 const app = express();
+const multer = require('multer');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET;

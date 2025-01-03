@@ -96,7 +96,7 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
-app.post('/upload-file', upload.single('file'), async (req, res) => {
+app.post('/upload-file', async (req, res) => {
   try {
     const localFilePath = req.file.path;
     const mimeType = req.file.mimetype;

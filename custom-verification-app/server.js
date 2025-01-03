@@ -100,7 +100,8 @@ app.post('/send-spreadsheet', async (req, res) => {
    if (!verifyProxySignature(req.query)) {
     return res.status(403).json({ success: false, message: 'Unauthorized' });
   }
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date();
+  console.log(timestamp);
 
   const email = req.body.email || 'N/A';
   const userChoice = req.body.UserChoice;

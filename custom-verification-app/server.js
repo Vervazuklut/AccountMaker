@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
 const { sendVerificationEmail, sendAssetsEmail } = require('./emailService');
+const { uploadFileToDrive } = require('./googleDriveService');
 const { Shopify } = require('@shopify/shopify-api');
 const app = express();
 const cookieParser = require('cookie-parser');
@@ -95,49 +96,60 @@ app.post('/send-custom-email', async (req, res) => {
   }
 });
 
-app.post('/send-spreadsheet', async (req, res) => {
+app.post('/upload-file', upload.single('file'), async (req, res) => {
   try {
-   if (!verifyProxySignature(req.query)) {
-    return res.status(403).json({ success: false, message: 'Unauthorized' });
-  }
-  const timestamp = new Date();
-  console.log(timestamp);
-
-  const email = req.body.email || 'N/A';
-  const userChoice = req.body.UserChoice;
-  const downloadFile = req.body.downloadFile || 'No file Selected';
-  const stage = 'N.A.';
-  const notes = '';
-
-  // Create the single row to append
-  const rowData = [
-    timestamp,
-    email,
-    userChoice,
-    downloadFile,
-    stage,
-    notes,
-  ];
-  const sheets = await getSheetsInstance();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'Sheet1!A:F',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: {
-      values: [rowData],
-    },
-  });
-  res.json({
-    success: true,
-    message: 'Row appended to Google Sheets successfully.',
-  });
+    const localFilePath = req.file.path;
+    const mimeType = req.file.mimetype;
+    const originalName = req.file.originalname;
+    const folderId = '1cW4i7Vvom-OweWizyxUP9bzYx9uTqJEx';
+    const fileData = await uploadFileToDrive(localFilePath, mimeType, folderId);
+    fs.unlinkSync(localFilePath);
+    return res.json({
+      success: true,
+      fileId: fileData.fileId,
+      webViewLink: fileData.webViewLink,
+      webContentLink: fileData.webContentLink,
+      originalName,
+    });
   } catch (error) {
-    console.error('Error in /send-spreadsheet:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to send spreadsheet.' });
+    console.error('Error uploading file to Drive:', error);
+    return res.status(500).json({ success: false, message: 'File upload failed.' });
   }
 });
-// all other functions
+
+app.post('/append-to-sheet', async (req, res) => {
+  try {
+    const { email, userChoice, driveURL } = req.body;
+    const timestamp = new Date().toISOString();
+    
+    // Insert your row data
+    const rowData = [
+      timestamp,
+      email || 'N/A',
+      userChoice || 'N/A',
+      driveURL || 'No Drive URL',
+      'N.A.',
+      '',
+    ];
+
+    const sheets = await getSheetsInstance();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Sheet1!A:F',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: [rowData],
+      },
+    });
+
+    return res.json({ success: true, message: 'Appended to sheet!' });
+  } catch (error) {
+    console.error('Error appending to sheet:', error);
+    res.status(500).json({ success: false, message: 'Could not append to sheet.' });
+  }
+});
+
 app.get('/verify', (req, res) => {
   const token = req.query.token;
   const tokenData = tokens[token];

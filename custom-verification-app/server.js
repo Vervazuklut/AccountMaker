@@ -382,7 +382,7 @@ app.post('/get-stats-product', async (req, res) => {
     };
 
     // Use send method with GetCommand
-    const result = await dynamoDb.send(new GetCommand(getParams));
+    let result = await dynamoDb.send(new GetCommand(getParams));
 
     if (!result.Item) {
       const command = new PutCommand({

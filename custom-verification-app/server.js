@@ -375,7 +375,6 @@ app.post('/ChangeMoney', async (req, res) => {
 app.post('/get-stats-product', async (req, res) => {
   try {
     const ProductId = req.body.ProductID;
-    console.log(ProductId);
     const getParams = {
       TableName: 'Products',
       Key: { 'ProductID': ProductId }

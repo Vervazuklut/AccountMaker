@@ -385,11 +385,37 @@ app.post('/get-stats-product', async (req, res) => {
     const result = await dynamoDb.send(new GetCommand(getParams));
 
     if (!result.Item) {
-      return res.status(404).send('Invalid ProductID.');
+      const command = new UpdateCommand({
+        TableName: "Products",
+        Key: {
+          ProductID: productId,
+        },
+        UpdateExpression: `
+          SET 
+            #reviews = list_append(if_not_exists(#reviews, :empty_list), :new_review),
+            #avgRating = :avgRating
+        `,
+        ExpressionAttributeNames: {
+          "#reviews": "Reviews",
+          "#avgRating": "Average Ratings",
+        },
+        ExpressionAttributeValues: {
+          ":empty_list": [],
+          ":new_review": [[0, []]],
+          ":avgRating": 0,
+        },
+        ReturnValues: "ALL_NEW",
+      });
+      
+      const updateResult = await dynamoDb.send(command);
+      if (!updateResult.Attributes) {
+        res.status(500).json({ success: false, message: 'Failed to update reviews.' });
+        return;
+      }
     }
 
     res.json(result.Item);
-
+    return res.status(200).json({ success: true, message: "Review Shown!" });;
   } catch (error) {
     console.error('Error in /get-stats-product:', error.message);
   }

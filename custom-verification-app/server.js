@@ -375,17 +375,28 @@ app.post('/ChangeMoney', async (req, res) => {
 app.post('/get-stats-product', async (req, res) => {
   try {
     const ProductId = req.body.ProductID;
-
+    console.log(ProductId);
     const getParams = {
       TableName: 'Products',
-      Key: { 'ProductID': {"S": ProductId} }
+      Key: { 'ProductID': ProductId }
     };
 
     // Use send method with GetCommand
     const result = await dynamoDb.send(new GetCommand(getParams));
 
-    
-    //result = await dynamoDb.send(new GetCommand(getParams));
+    if (!result.Item) {
+      const command = new PutCommand({
+        TableName: "Products",
+        Item: {
+        'ProductID': ProductId,
+        "Average Ratings": 0,
+        Reviews: [[0, []]]
+        }
+        });
+      
+      await dynamoDb.send(command);
+      result = await dynamoDb.send(new GetCommand(getParams));
+    }
     return res.status(200).json({
       success: true,
       message: "Review Shown!",

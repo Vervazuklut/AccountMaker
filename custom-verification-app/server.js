@@ -378,7 +378,7 @@ app.post('/get-stats-product', async (req, res) => {
 
     const getParams = {
       TableName: 'Products',
-      Key: { ProductID: ProductId }
+      Key: { "ProductID": ProductId }
     };
 
     // Use send method with GetCommand
@@ -388,7 +388,7 @@ app.post('/get-stats-product', async (req, res) => {
       const command = new PutCommand({
         TableName: "Products",
         Item: {
-        ProductID: ProductId,
+        "ProductID": ProductId,
         "Average Ratings": 0,
         Reviews: [[0, []]]
         }

@@ -385,27 +385,14 @@ app.post('/get-stats-product', async (req, res) => {
     const result = await dynamoDb.send(new GetCommand(getParams));
 
     if (!result.Item) {
-      const command = new UpdateCommand({
+      const command = new PutCommand({
         TableName: "Products",
-        Key: {
-          ProductID: productId,
-        },
-        UpdateExpression: `
-          SET 
-            #reviews = list_append(if_not_exists(#reviews, :empty_list), :new_review),
-            #avgRating = :avgRating
-        `,
-        ExpressionAttributeNames: {
-          "#reviews": "Reviews",
-          "#avgRating": "Average Ratings",
-        },
-        ExpressionAttributeValues: {
-          ":empty_list": [],
-          ":new_review": [[0, []]],
-          ":avgRating": 0,
-        },
-        ReturnValues: "ALL_NEW",
-      });
+        Item: {
+        ProductID: ProductId,
+        Reviews: [[0, []]],
+        "Average Ratings": 0
+        }
+        });
       
       const updateResult = await dynamoDb.send(command);
       if (!updateResult.Attributes) {
@@ -413,7 +400,7 @@ app.post('/get-stats-product', async (req, res) => {
         return;
       }
     }
-
+    result = await dynamoDb.send(new GetCommand(getParams));
     res.json(result.Item);
     return res.status(200).json({ success: true, message: "Review Shown!" });;
   } catch (error) {

@@ -378,24 +378,13 @@ app.post('/get-stats-product', async (req, res) => {
 
     const getParams = {
       TableName: 'Products',
-      Key: { "ProductID": ProductId }
+      Key: { 'ProductID': ProductId }
     };
 
     // Use send method with GetCommand
     const result = await dynamoDb.send(new GetCommand(getParams));
 
-    if (!result.Item) {
-      const command = new PutCommand({
-        TableName: "Products",
-        Item: {
-        "ProductID": ProductId,
-        "Average Ratings": 0,
-        Reviews: [[0, []]]
-        }
-        });
-      
-      await dynamoDb.send(command);
-    }
+    
     result = await dynamoDb.send(new GetCommand(getParams));
     return res.status(200).json({
       success: true,

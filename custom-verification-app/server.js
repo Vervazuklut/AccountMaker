@@ -385,7 +385,7 @@ app.post('/get-stats-product', async (req, res) => {
     const result = await dynamoDb.send(new GetCommand(getParams));
 
     
-    result = await dynamoDb.send(new GetCommand(getParams));
+    //result = await dynamoDb.send(new GetCommand(getParams));
     return res.status(200).json({
       success: true,
       message: "Review Shown!",

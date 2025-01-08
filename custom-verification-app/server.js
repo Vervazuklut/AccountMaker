@@ -394,17 +394,17 @@ app.post('/get-stats-product', async (req, res) => {
         }
         });
       
-      const updateResult = await dynamoDb.send(command);
-      if (!updateResult.Attributes) {
-        res.status(500).json({ success: false, message: 'Failed to update reviews.' });
-        return;
-      }
+      await dynamoDb.send(command);
     }
     result = await dynamoDb.send(new GetCommand(getParams));
-    res.json(result.Item);
-    return res.status(200).json({ success: true, message: "Review Shown!" });;
+    return res.status(200).json({
+      success: true,
+      message: "Review Shown!",
+      item: result.Item
+    });
   } catch (error) {
     console.error('Error in /get-stats-product:', error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 app.post('/AddReview', async (req, res) => {

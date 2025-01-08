@@ -389,8 +389,8 @@ app.post('/get-stats-product', async (req, res) => {
         TableName: "Products",
         Item: {
         ProductID: ProductId,
-        Reviews: [[0, []]],
-        "Average Ratings": 0
+        "Average Ratings": 0,
+        Reviews: [[0, []]]
         }
         });
       

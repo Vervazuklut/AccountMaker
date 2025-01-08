@@ -372,6 +372,99 @@ app.post('/ChangeMoney', async (req, res) => {
   res.status(500).json({ success: false, message: 'Server error.' });
   }
 });
+app.post('/get-stats-product', async (req, res) => {
+  try {
+    const ProductId = req.body.ProductID;
+
+    const getParams = {
+      TableName: 'Products',
+      Key: { 'ProductID': ProductId }
+    };
+
+    // Use send method with GetCommand
+    const result = await dynamoDb.send(new GetCommand(getParams));
+
+    if (!result.Item) {
+      return res.status(404).send('Invalid ProductID.');
+    }
+
+    res.json(result.Item);
+
+  } catch (error) {
+    console.error('Error in /get-stats-product:', error.message);
+  }
+});
+app.post('/AddReview', async (req, res) => {
+  try {
+  if (!verifyProxySignature(req.query)) {
+  return res.status(403).json({ success: false, message: 'Unauthorized' });
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+  return res.status(401).send('No authorization token provided.');
+  }
+  const ProductId = req.body.ProductID;
+
+    const getParams = {
+      TableName: 'Products',
+      Key: { 'ProductID': ProductId }
+    };
+  const result = await dynamoDb.send(new GetCommand(getParams));
+  if (!result.Item) {
+  res.status(404).json({ success: false, message: 'ProductID not found' });
+  return;
+  }
+  let existingReviews = [];
+  try {
+    const itemRes = await dynamoClient.send(new GetCommand(getParams));
+    if (itemRes.Item && itemRes.Item.Reviews) {
+      existingReviews = itemRes.Item.Reviews; // eg. [[5, 'Lovely product!'], ...]
+    }
+  } catch (getError) {
+    console.error("Error fetching item:", getError);
+    throw getError;
+  }
+  existingReviews.push([rating, reviewText]);
+  const totalRating = existingReviews.reduce((acc, rev) => acc + rev[0], 0);
+  const avgRating = totalRating / existingReviews.length;
+
+  const command = new UpdateCommand({
+    TableName: "Products",
+    Key: {
+      ProductID: productId,
+    },
+    UpdateExpression: `
+      SET 
+        #reviews = list_append(if_not_exists(#reviews, :empty_list), :new_review),
+        #avgRating = :avgRating
+    `,
+    ExpressionAttributeNames: {
+      "#reviews": "Reviews",
+      "#avgRating": "Average Ratings",
+    },
+    ExpressionAttributeValues: {
+      ":empty_list": [],
+      ":new_review": [[req.body.rating, req.body.reviewText]],
+      ":avgRating": avgRating,
+    },
+    ReturnValues: "ALL_NEW",
+  });
+  
+  const updateResult = await dynamoDb.send(command);
+  
+  if (!updateResult.Attributes) {
+  res.status(500).json({ success: false, message: 'Failed to update reviews.' });
+  return;
+  }
+  
+  return res.status(200).json({ success: true, message: "Review Added!" });
+  } catch (error) {
+  console.error('Error in /AddReview:', error.message);
+  res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
 /*
 function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');

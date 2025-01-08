@@ -390,7 +390,7 @@ app.post('/get-stats-product', async (req, res) => {
         Item: {
         'ProductID': ProductId,
         "Average Ratings": 0,
-        Reviews: [[0, []]]
+        Reviews: []
         }
         });
       

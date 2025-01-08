@@ -407,78 +407,97 @@ app.post('/get-stats-product', async (req, res) => {
   }
 });
 app.post('/AddReview', async (req, res) => {
-  try {
-  if (!verifyProxySignature(req.query)) {
-  return res.status(403).json({ success: false, message: 'Unauthorized' });
+try {
+// 1) Check proxy signature
+if (!verifyProxySignature(req.query)) {
+return res.status(403).json({ success: false, message: 'Unauthorized' });
+}
+
+// 2) Check authorization header
+const authHeader = req.headers.authorization;
+if (!authHeader) {
+  return res.status(401).send('No authorization token provided.');
+}
+
+// 3) Extract fields from request body
+const productId     = req.body.ProductID;      // Product's unique ID
+const rating        = Number(req.body.rating); // Numeric rating
+const reviewTitle   = req.body.title;          // Title for this specific review
+const reviewCustomer = req.body.customer;      // The customer name/ID
+const reviewDesc    = req.body.description;    // Review text/description
+
+// 4) Validate rating
+if (isNaN(rating)) {
+  return res.status(400).json({ success: false, message: 'Invalid rating value.' });
+}
+
+// 5) Ensure the productID item exists
+const getParams = {
+  TableName: 'Products',
+  Key: { ProductID: productId }
+};
+const result = await dynamoDb.send(new GetCommand(getParams));
+if (!result.Item) {
+  return res.status(404).json({ success: false, message: 'ProductID not found' });
+}
+
+// 6) Fetch current reviews (if any)
+let existingReviews = [];
+try {
+  const itemRes = await dynamoDb.send(new GetCommand(getParams));
+  if (itemRes.Item && itemRes.Item.Reviews) {
+    existingReviews = itemRes.Item.Reviews;
   }
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).send('No authorization token provided.');
-  }
-  const productId = req.body.ProductID;      // Main product ID
-  const rating = Number(req.body.rating);    // Numeric rating
-  const reviewTitle = req.body.title;        // Title of the review
-  const reviewCustomer = req.body.customer;  // The customer who made the review 
-  const reviewDesc = req.body.description;   // Review description text
-  if (isNaN(rating)) {
-    return res.status(400).json({ success: false, message: 'Invalid rating value.' });
-  }
-  const getParams = {
-    TableName: 'Products',
-    Key: { ProductID: productId }
-  };
-  const result = await dynamoDb.send(new GetCommand(getParams));
-  if (!result.Item) {
-    return res.status(404).json({ success: false, message: 'ProductID not found' });
-  }
-  let existingReviews = [];
-  try {
-    const itemRes = await dynamoDb.send(new GetCommand(getParams));
-    if (itemRes.Item && itemRes.Item.Reviews) {
-      existingReviews = itemRes.Item.Reviews;
-    }
-  } catch (getError) {
-    console.error('Error fetching item:', getError);
-    throw getError;
-  }
-  existingReviews.push([rating, reviewTitle,reviewCustomer, reviewDesc]);
-  const totalRating = existingReviews.reduce((acc, rev) => acc + rev[0], 0);
-  const avgRating = totalRating / existingReviews.length;
-  const updateParams = {
-    TableName: 'Products',
-    Key: {
-      ProductID: productId,
-    },
-    UpdateExpression: `
-      SET 
-        #reviews = list_append(if_not_exists(#reviews, :empty_list), :new_review),
-        #avgRating = :avgRating
-    `,
-    ExpressionAttributeNames: {
-      '#reviews': 'Reviews',
-      '#avgRating': 'Average Ratings'
-    },
-    ExpressionAttributeValues: {
-      ':empty_list': [],
-      ':new_review': [[rating, reviewTitle,reviewCustomer, reviewDesc]],
-      ':avgRating': avgRating
-    },
-    ReturnValues: 'ALL_NEW'
-  };
-  
-  const updateResult = await dynamoDb.send(new UpdateCommand(updateParams));
-  
-  if (!updateResult.Attributes) {
-    return res.status(500).json({ success: false, message: 'Failed to update reviews.' });
-  }
-  
-  // 10) Success!
-  return res.status(200).json({ success: true, message: 'Review Added!' });
-  } catch (error) {
-  console.error('Error in /AddReview:', error.message);
-  return res.status(500).json({ success: false, message: 'Server error.' });
-  }
-  });
+} catch (getError) {
+  console.error('Error fetching item:', getError);
+  throw getError;
+}
+
+// 7) Append the new review
+//    (We assume the product already has a "title" at the top level; here we only store data for this new review)
+existingReviews.push([rating, reviewTitle, reviewCustomer, reviewDesc]);
+
+// 8) Recalculate the overall average rating
+const totalRating = existingReviews.reduce((acc, rev) => acc + rev[0], 0);
+const avgRating = totalRating / existingReviews.length;
+
+// 9) Prepare the DynamoDB UpdateCommand
+const updateParams = {
+  TableName: 'Products',
+  Key: {
+    ProductID: productId,
+  },
+  UpdateExpression: `
+    SET
+      #reviews  = list_append(if_not_exists(#reviews, :empty_list), :new_review),
+      #avgRating = :avgRating
+  `,
+  ExpressionAttributeNames: {
+    '#reviews': 'Reviews',
+    '#avgRating': 'Average Ratings',
+  },
+  ExpressionAttributeValues: {
+    ':empty_list': [],
+    ':new_review': [[rating, reviewTitle, reviewCustomer, reviewDesc]],
+    ':avgRating': avgRating,
+  },
+  ReturnValues: 'ALL_NEW',
+};
+
+const updateResult = await dynamoDb.send(new UpdateCommand(updateParams));
+
+// 10) Check update success
+if (!updateResult.Attributes) {
+  return res.status(500).json({ success: false, message: 'Failed to update reviews.' });
+}
+
+// 11) Success response
+return res.status(200).json({ success: true, message: 'Review Added!' });
+} catch (error) {
+console.error('Error in /AddReview:', error.message);
+return res.status(500).json({ success: false, message: 'Server error.' });
+}
+});
 /*
 function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
   const generatedHmac = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');

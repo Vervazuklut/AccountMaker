@@ -418,6 +418,7 @@ app.post('/AddReview', async (req, res) => {
   const productId = req.body.ProductID;      // Main product ID
   const rating = Number(req.body.rating);    // Numeric rating
   const reviewTitle = req.body.title;        // Title of the review
+  const reviewCustomer = req.body.customer;  // The customer who made the review 
   const reviewDesc = req.body.description;   // Review description text
   if (isNaN(rating)) {
     return res.status(400).json({ success: false, message: 'Invalid rating value.' });
@@ -440,7 +441,7 @@ app.post('/AddReview', async (req, res) => {
     console.error('Error fetching item:', getError);
     throw getError;
   }
-  existingReviews.push([rating, reviewTitle, reviewDesc]);
+  existingReviews.push([rating, reviewTitle,reviewCustomer, reviewDesc]);
   const totalRating = existingReviews.reduce((acc, rev) => acc + rev[0], 0);
   const avgRating = totalRating / existingReviews.length;
   const updateParams = {
@@ -459,7 +460,7 @@ app.post('/AddReview', async (req, res) => {
     },
     ExpressionAttributeValues: {
       ':empty_list': [],
-      ':new_review': [[rating, reviewTitle, reviewDesc]], // <-- 3-value array
+      ':new_review': [[rating, reviewTitle,reviewCustomer, reviewDesc]],
       ':avgRating': avgRating
     },
     ReturnValues: 'ALL_NEW'

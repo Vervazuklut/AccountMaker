@@ -428,12 +428,15 @@ const authHeader = req.headers.authorization;
     const email = decoded.email;
 
 // 3) Extract fields from request body
-const productId     = req.body.ProductID;      // Product's unique ID
+const { ProductID, title, description } = req.body;
+const productId     = ProductID;      // Product's unique ID
 const rating        = Number(req.body.rating); // Numeric rating
-const reviewTitle   = req.body.title;          // Title for this specific review
+const reviewTitle   = title;          // Title for this specific review
 const reviewCustomer = email.split("@")[0];    // The customer name/ID
-const reviewDesc    = req.body.description;    // Review text/description
-console.log(reviewCustomer);
+const reviewDesc    = description;    // Review text/description
+console.log(ProductID);
+console.log(title);
+console.log(description);
 // 4) Validate rating
 if (isNaN(rating)) {
   return res.status(400).json({ success: false, message: 'Invalid rating value.' });

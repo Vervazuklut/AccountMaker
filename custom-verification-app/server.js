@@ -415,17 +415,25 @@ return res.status(403).json({ success: false, message: 'Unauthorized' });
 
 // 2) Check authorization header
 const authHeader = req.headers.authorization;
-if (!authHeader) {
-  return res.status(401).send('No authorization token provided.');
-}
+    //console.log('Authorization Header:', authHeader);
+
+    if (!authHeader) {
+      return res.status(401).send('No authorization token provided.');
+    }
+
+    const token = authHeader.split(' ')[1]; // Expected format: "Bearer <token>"
+
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const email = decoded.email;
 
 // 3) Extract fields from request body
 const productId     = req.body.ProductID;      // Product's unique ID
 const rating        = Number(req.body.rating); // Numeric rating
 const reviewTitle   = req.body.title;          // Title for this specific review
-const reviewCustomer = req.body.customer;      // The customer name/ID
+const reviewCustomer = email.split("@")[0];    // The customer name/ID
 const reviewDesc    = req.body.description;    // Review text/description
-
+console.log(reviewCustomer);
 // 4) Validate rating
 if (isNaN(rating)) {
   return res.status(400).json({ success: false, message: 'Invalid rating value.' });
@@ -562,7 +570,7 @@ function verifyWebhookHMAC(rawBody, hmacHeader, secret) {
       TableName: 'Account',
       Key: { users: email },
       UpdateExpression: "ADD Money :amount, Download_Credits :credits",
-      ExpressionAttributeValues: { ":amount": MoneyAdded + 2.25,
+      ExpressionAttributeValues: { ":amount": MoneyAdded,
         ":credits": 50
        },
       ReturnValues: "ALL_NEW",

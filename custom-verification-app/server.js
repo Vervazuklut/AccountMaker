@@ -125,7 +125,8 @@ app.post('/upload-file', upload.single('file'), async (req, res) => {
 app.post('/append-to-sheet', async (req, res) => {
   try {
     const { email, userChoice, driveURL } = req.body;
-    const timestamp = new Date().toISOString();
+    const offset = 8; // SG UTC time = UTC+8
+    const timestamp = (new Date().getTime() + new Date().getTimezoneOffset() * 60000 + (3600000 * offset)).toISOString();
     
     // Insert your row data
     const rowData = [

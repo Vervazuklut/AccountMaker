@@ -126,11 +126,20 @@ app.post('/append-to-sheet', async (req, res) => {
   try {
     const { email, userChoice, driveURL } = req.body;
     const offset = 8; // SG UTC time = UTC+8
-    const timestamp = new Date(
+    const date = new Date(
       new Date().getTime() +
       new Date().getTimezoneOffset() * 60000 +
       (3600000 * offset)
-    ).toISOString();
+    );
+    const month = date.getMonth() + 1; // Months are 0-based
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+
+    // Format the string
+    const timestamp = `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
     
     // Insert your row data
     const rowData = [

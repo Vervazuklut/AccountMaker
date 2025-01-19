@@ -138,7 +138,7 @@ app.post('/append-to-sheet', async (req, res) => {
       email || 'N/A',
       userChoice || 'N/A',
       driveURL || 'No Drive URL',
-      'N.A.',
+      'Unreviewed',
       '',
     ];
 
